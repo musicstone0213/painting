@@ -14,6 +14,43 @@ const io     = new Server(server, { cors: { origin: '*' } });
 const PORT   = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+
+// ── 貼圖搜尋 API（後端代理，避免 CORS） ────────────
+app.post('/api/search-stickers', async (req, res) => {
+  const { query } = req.body;
+  if (!query) return res.json({ urls: [] });
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'interleaved-thinking-2025-05-14'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: `你是迷因貼圖搜尋助手。搜尋相關迷因圖片，只回傳 JSON 陣列，包含 6~8 張圖片的直連 URL（.png .jpg .gif .webp 結尾）。格式：["url1","url2",...] 不加任何其他文字。`,
+        messages: [{ role: 'user', content: `搜尋迷因圖片：${query}` }]
+      })
+    });
+
+    const data = await response.json();
+    const text = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text).join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const urls  = JSON.parse(clean);
+    res.json({ urls: Array.isArray(urls) ? urls : [] });
+  } catch(err) {
+    console.error('[貼圖搜尋失敗]', err.message);
+    res.json({ urls: [], error: err.message });
+  }
+});
 
 // ── 資料結構 ──────────────────────────────────────
 // rooms[code] = {

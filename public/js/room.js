@@ -67,6 +67,7 @@ const stickerPreviewImg  = document.getElementById('stickerPreviewImg');
 const stickerConfirmBtn  = document.getElementById('stickerConfirmBtn');
 const stickerCancelBtn   = document.getElementById('stickerCancelBtn');
 const stickerHandle      = document.getElementById('stickerHandle');
+const pasteImgBtn        = document.getElementById('pasteImgBtn');
 
 // ── 狀態 ─────────────────────────────────────────
 let currentColor  = '#1A1A2E';
@@ -95,13 +96,16 @@ function fillWhite() {
 }
 function resizeCanvas() {
   const rect = wrapper.getBoundingClientRect();
-  const snap = canvas.toDataURL();
+  // 用 offscreen canvas 儲存目前內容，避免 toDataURL 縮放失真
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = canvas.width  || rect.width;
+  offscreen.height = canvas.height || rect.height;
+  offscreen.getContext('2d').drawImage(canvas, 0, 0);
+
   canvas.width  = rect.width;
   canvas.height = rect.height;
   fillWhite();
-  const img = new Image();
-  img.src = snap;
-  img.onload = () => ctx.drawImage(img, 0, 0);
+  ctx.drawImage(offscreen, 0, 0, rect.width, rect.height);
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
@@ -143,9 +147,15 @@ socket.on('queueAdmitted', (res) => {
 // 畫筆工具
 // ══════════════════════════════════════════════════
 function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  const src  = e.touches ? e.touches[0] : e;
-  return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  const rect   = canvas.getBoundingClientRect();
+  const src    = e.touches ? e.touches[0] : e;
+  // 換算 CSS 像素 → Canvas 實際像素（解析度比例）
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (src.clientX - rect.left) * scaleX,
+    y: (src.clientY - rect.top)  * scaleY
+  };
 }
 
 /** 根據筆刷類型實際畫線 */
@@ -297,34 +307,66 @@ document.addEventListener('paste', (e) => {
   }
 });
 
+// ── 手機「貼上圖片」按鈕：主動讀取剪貼簿 ──────────
+if (pasteImgBtn) {
+  pasteImgBtn.addEventListener('click', async () => {
+    if (inQueue) return;
+    try {
+      // 現代瀏覽器 Clipboard API
+      const clipItems = await navigator.clipboard.read();
+      for (const item of clipItems) {
+        const imgType = item.types.find(t => t.startsWith('image/'));
+        if (imgType) {
+          const blob = await item.getType(imgType);
+          const url  = URL.createObjectURL(blob);
+          const img  = new Image();
+          img.onload = () => {
+            const maxW = canvas.width*0.5, maxH = canvas.height*0.5;
+            let w=img.width, h=img.height;
+            if (w>maxW){h=h*maxW/w;w=maxW;}
+            if (h>maxH){w=w*maxH/h;h=maxH;}
+            const x=(canvas.width-w)/2, y=(canvas.height-h)/2;
+            ctx.drawImage(img,x,y,w,h);
+            URL.revokeObjectURL(url);
+            const tmp=document.createElement('canvas');
+            tmp.width=canvas.width; tmp.height=canvas.height;
+            tmp.getContext('2d').drawImage(img,x,y,w,h);
+            socket.emit('pasteImage',{dataURL:tmp.toDataURL('image/png')});
+            socket.emit('saveSnapshot',{snapshot:canvas.toDataURL('image/jpeg',0.6)});
+          };
+          img.src = url;
+          return;
+        }
+      }
+      showNotif('剪貼簿中沒有圖片');
+    } catch(err) {
+      // 降級：提示使用者用 Ctrl+V
+      showNotif('請先複製圖片，再點此按鈕');
+    }
+  });
+}
+
 // ══════════════════════════════════════════════════
 // 貼圖系統
 // ══════════════════════════════════════════════════
 
-/** 用 Anthropic API 搜尋迷因關鍵字，回傳圖片 URL 列表 */
+/** 透過後端 API 搜尋迷因貼圖（避免 CORS 問題） */
 async function searchStickers(query) {
   stickerGrid.innerHTML = '<div class="sticker-loading">🔍 搜尋中...</div>';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res  = await fetch('/api/search-stickers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        system: `你是迷因貼圖搜尋助手。用戶輸入關鍵字，你用 web_search 搜尋相關迷因圖片，
-回傳一個 JSON 陣列，包含 5~8 張圖片的直連 URL（.png, .jpg, .gif, .webp）。
-只回傳 JSON 陣列，不要加其他文字或 markdown。格式：["url1","url2",...]`,
-        messages: [{ role: 'user', content: `搜尋迷因圖片：${query}，找真實可用的圖片直連 URL` }]
-      })
+      body: JSON.stringify({ query })
     });
     const data = await res.json();
-    const text = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    const clean = text.replace(/```json|```/g,'').trim();
-    const urls  = JSON.parse(clean);
-    renderStickerResults(urls);
+    if (data.urls && data.urls.length > 0) {
+      renderStickerResults(data.urls);
+    } else {
+      stickerGrid.innerHTML = '<div class="sticker-error">沒有找到圖片，換個關鍵字試試 🤔</div>';
+    }
   } catch(err) {
-    stickerGrid.innerHTML = `<div class="sticker-error">搜尋失敗，請再試一次 😢</div>`;
+    stickerGrid.innerHTML = '<div class="sticker-error">搜尋失敗，請再試一次 😢</div>';
   }
 }
 

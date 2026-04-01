@@ -185,11 +185,48 @@ body{display:flex;flex-direction:column;}
 
 /* ══ RESPONSIVE ═══════════════════════════════════ */
 @media(max-width:767px){
+  :root{ --btbar-h: 130px; }
   .chat-sidebar{display:none;}
   .chat-toggle-btn{display:flex;}
+
+  /* 工具列兩列更寬鬆 */
+  .toolbar-panel{ gap:8px; padding:6px 10px; }
+  .swatches-row{ gap:6px; justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; }
+  .tools-row{ gap:6px; flex-wrap:nowrap; overflow-x:auto; }
+
+  /* 色票稍大 */
+  .swatch{ width:28px; height:28px; }
+
+  /* 畫筆按鈕稍大 */
+  .brush-btn{ width:36px; height:36px; font-size:1.1rem; }
+
+  /* 表情按鈕縮小 */
+  .reaction-btns{ gap:2px; }
+  .reaction-btn{ width:26px; height:26px; font-size:.85rem; }
+
+  /* 分頁字小一點 */
+  .ttab{ font-size:.45rem; padding:5px 4px; }
+
+  /* 隱藏桌機聊天 */
+  .chat-sidebar{ display:none; }
+
+  /* 貼圖 grid 橫向捲動 */
+  .sticker-grid{ flex-wrap:nowrap; overflow-x:auto; align-items:center; }
+  .sticker-item{ width:56px; height:56px; flex-shrink:0; }
 }
+
 @media(min-width:768px){
   :root{--btbar-h:100px;}
   .chat-toggle-btn,.mobile-chat{display:none!important;}
   .toolbar-tabs{max-width:200px;}
 }
+
+/* ── 貼上圖片按鈕 ── */
+.paste-img-btn{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);
+  font-size:1rem;cursor:pointer;width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background .15s;
+}
+.paste-img-btn:hover{background:rgba(255,255,255,.18);}
+.paste-img-btn:active{transform:scale(.9);}
