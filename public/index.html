@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>塗鴉星球 — 多人白板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<div class="bg-blobs">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+
+<main class="lobby-container">
+
+  <!-- Logo -->
+  <div class="logo-area">
+    <div class="logo-icon">🎨</div>
+    <h1 class="logo-title">塗鴉星球</h1>
+    <p class="logo-sub">跟陌生人一起亂畫，惡搞彼此的作品</p>
+  </div>
+
+  <!-- 暱稱 -->
+  <div class="card nickname-card">
+    <label class="field-label">你的暱稱</label>
+    <input type="text" id="nicknameInput" class="field-input"
+           placeholder="輸入暱稱（最多 12 字）" maxlength="12" autocomplete="off"/>
+  </div>
+
+  <!-- 主要操作區 -->
+  <div class="main-actions">
+
+    <!-- 快速加入 -->
+    <button class="btn btn-quick" id="quickJoinBtn">
+      <span class="btn-icon">🚀</span>
+      <span class="btn-text">
+        <strong>快速加入</strong>
+        <small>隨機配對一個公開房間</small>
+      </span>
+    </button>
+
+    <!-- 開放房間列表 -->
+    <div class="card rooms-card">
+      <div class="rooms-header">
+        <span class="section-title">🌍 公開房間</span>
+        <button class="refresh-btn" id="refreshBtn" title="重新整理">↺</button>
+      </div>
+      <div id="roomList" class="room-list">
+        <div class="room-list-empty">載入中...</div>
+      </div>
+    </div>
+
+    <!-- 展開：建立 / 私人加入 -->
+    <div class="secondary-actions">
+      <button class="text-btn" id="toggleCreateBtn">＋ 建立新房間</button>
+      <span class="divider-dot">·</span>
+      <button class="text-btn" id="toggleJoinBtn">🔑 代碼加入</button>
+    </div>
+
+    <!-- 建立房間（預設收起） -->
+    <div class="card collapse-card hidden" id="createPanel">
+      <label class="field-label">房間名稱</label>
+      <input type="text" id="roomNameInput" class="field-input"
+             placeholder="幫房間取個名字" maxlength="20" autocomplete="off"/>
+      <div class="toggle-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="isPublicCheck" checked/>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          公開（出現在列表）
+        </label>
+      </div>
+      <button class="btn btn-create" id="createBtn">建立房間</button>
+    </div>
+
+    <!-- 代碼加入（預設收起） -->
+    <div class="card collapse-card hidden" id="joinPanel">
+      <label class="field-label">房間代碼</label>
+      <input type="text" id="roomCodeInput" class="field-input code-input"
+             placeholder="輸入 6 碼代碼" maxlength="6" autocomplete="off"/>
+      <button class="btn btn-join" id="joinBtn">加入房間</button>
+    </div>
+
+  </div>
+
+  <div id="errorMsg" class="error-msg hidden"></div>
+
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/lobby.js"></script>
+</body>
+</html>
