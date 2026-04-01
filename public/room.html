@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Painting</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
@@ -10,63 +10,75 @@
 </head>
 <body>
 
-  <!-- ── 頂部狀態列 ── -->
-  <header class="topbar">
-    <button class="icon-btn" id="leaveBtn">←</button>
-    <div class="room-info">
-      <span class="room-code-label">ROOM</span>
-      <span class="room-code" id="roomCodeDisplay">------</span>
-      <button class="copy-btn" id="copyCodeBtn">📋</button>
+  <!-- ── 畫布容器（可滑動） ── -->
+  <div id="canvasViewport" class="canvas-viewport">
+    <canvas id="mainCanvas"></canvas>
+    <div id="cursorLayer" class="cursor-layer"></div>
+    <div id="reactionLayer" class="reaction-layer"></div>
+    <div id="danmakuLayer" class="danmaku-layer"></div>
+
+    <!-- 貼圖預覽框 -->
+    <div id="stickerPreview" class="sticker-preview hidden">
+      <img id="stickerPreviewImg"/>
+      <div id="stickerHandle" class="sticker-handle"></div>
+      <div class="sticker-actions">
+        <button id="stickerConfirmBtn" class="sticker-confirm">✓</button>
+        <button id="stickerCancelBtn" class="sticker-cancel">✕</button>
+      </div>
     </div>
-    <div class="topbar-right">
-      <div class="online-badge"><span class="dot"></span><span id="onlineCount">1</span></div>
-      <button class="icon-btn chat-toggle-btn" id="chatToggleBtn">💬</button>
+  </div>
+
+  <!-- ── 頂部 HUD（浮在畫布上） ── -->
+  <header class="top-hud">
+    <div class="hud-left">
+      <button class="hud-btn" id="leaveBtn">←</button>
+      <div class="hud-code-box">
+        <span class="hud-code-label">ROOM</span>
+        <span class="hud-code" id="roomCodeDisplay">------</span>
+        <button class="hud-copy" id="copyCodeBtn">📋</button>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-online">
+        <span class="hud-dot"></span>
+        <span id="onlineCount">1</span>
+      </div>
     </div>
   </header>
 
-  <!-- ── 主體 ── -->
-  <div class="main-area">
-
-    <!-- 畫布 -->
-    <div class="canvas-wrapper" id="canvasWrapper">
-      <canvas id="mainCanvas"></canvas>
-      <div id="cursorLayer"></div>
-      <div id="danmakuLayer" class="danmaku-layer"></div>
-      <div id="reactionLayer" class="reaction-layer"></div>
-      <!-- 貼圖預覽框（拖曳調整大小用） -->
-      <div id="stickerPreview" class="sticker-preview hidden">
-        <img id="stickerPreviewImg" />
-        <div class="sticker-handle sticker-handle-se" id="stickerHandle"></div>
-        <div class="sticker-actions">
-          <button class="sticker-confirm" id="stickerConfirmBtn">✓ 確認</button>
-          <button class="sticker-cancel"  id="stickerCancelBtn">✕</button>
-        </div>
-      </div>
+  <!-- ── 右下 FAB ── -->
+  <div class="fab-container" id="fabContainer">
+    <!-- 展開選項 -->
+    <div class="fab-menu" id="fabMenu">
+      <button class="fab-item" id="fabChat">
+        <span class="fab-item-icon">💬</span>
+        <span class="fab-item-label">聊天</span>
+      </button>
+      <button class="fab-item" id="fabSticker">
+        <span class="fab-item-icon">🖼️</span>
+        <span class="fab-item-label">貼圖</span>
+      </button>
+      <button class="fab-item" id="fabReaction">
+        <span class="fab-item-icon">😂</span>
+        <span class="fab-item-label">表情</span>
+      </button>
+      <button class="fab-item" id="fabClear">
+        <span class="fab-item-icon">🗑️</span>
+        <span class="fab-item-label">清除投票</span>
+      </button>
     </div>
-
-    <!-- 桌機聊天室 -->
-    <aside class="chat-sidebar" id="chatSidebar">
-      <div class="chat-header"><span>💬 CHAT</span><button class="chat-close-btn" id="chatCloseBtn">✕</button></div>
-      <div class="chat-messages" id="chatMessages"></div>
-      <div class="chat-input-area">
-        <input type="text" id="chatInput" class="chat-input" placeholder="說點什麼…" maxlength="200" autocomplete="off"/>
-        <button class="chat-send-btn" id="chatSendBtn">➤</button>
-      </div>
-    </aside>
+    <!-- 主按鈕 -->
+    <button class="fab-main" id="fabMain">✏️</button>
   </div>
 
-  <!-- ── 底部工具列 ── -->
-  <div class="bottom-toolbar">
-
-    <!-- 分頁切換 -->
-    <div class="toolbar-tabs">
-      <button class="ttab active" id="tabPen" data-tab="pen">✏️ 畫筆</button>
-      <button class="ttab" id="tabSticker" data-tab="sticker">🖼️ 貼圖</button>
+  <!-- ── 底部抽屜工具列 ── -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-handle" id="drawerHandle">
+      <div class="drawer-bar"></div>
     </div>
-
-    <!-- 畫筆面板 -->
-    <div class="toolbar-panel" id="panelPen">
-      <div class="toolbar-row swatches-row">
+    <div class="drawer-body">
+      <!-- 顏色列 -->
+      <div class="tool-row color-row">
         <input type="color" id="colorPicker" class="color-picker" value="#1A1A2E"/>
         <div class="swatches">
           <button class="swatch active" style="background:#1A1A2E" data-color="#1A1A2E"></button>
@@ -74,20 +86,12 @@
           <button class="swatch" style="background:#FFD93D" data-color="#FFD93D"></button>
           <button class="swatch" style="background:#4ECDC4" data-color="#4ECDC4"></button>
           <button class="swatch" style="background:#C77DFF" data-color="#C77DFF"></button>
-          <button class="swatch" style="background:#fff;border:2px solid #aaa" data-color="#ffffff"></button>
+          <button class="swatch" style="background:#ffffff;border-color:#555" data-color="#ffffff"></button>
         </div>
-        <div class="reaction-btns">
-          <button class="reaction-btn" data-emoji="👍">👍</button>
-          <button class="reaction-btn" data-emoji="😂">😂</button>
-          <button class="reaction-btn" data-emoji="😮">😮</button>
-          <button class="reaction-btn" data-emoji="🔥">🔥</button>
-          <button class="reaction-btn" data-emoji="💀">💀</button>
-          <button class="reaction-btn" data-emoji="❓">❓</button>
-        </div>
-        <button class="paste-img-btn" id="pasteImgBtn" title="貼上圖片（從剪貼簿）">📎</button>
+        <button class="paste-btn" id="pasteImgBtn">📎</button>
       </div>
-      <div class="toolbar-row tools-row">
-        <!-- 畫筆類型 -->
+      <!-- 畫筆列 -->
+      <div class="tool-row brush-row">
         <div class="brush-group">
           <button class="brush-btn active" data-brush="pen"    title="鉛筆">✏️</button>
           <button class="brush-btn"        data-brush="ink"    title="毛筆">🖌️</button>
@@ -96,61 +100,83 @@
           <button class="brush-btn"        data-brush="marker" title="螢光筆">✨</button>
           <button class="brush-btn"        data-brush="eraser" title="橡皮擦">🧹</button>
         </div>
-        <!-- 線寬 -->
         <div class="size-group">
           <button class="size-btn active" data-size="4">●</button>
           <button class="size-btn"        data-size="10">●</button>
           <button class="size-btn"        data-size="22">●</button>
         </div>
-        <button class="btn-clear" id="clearBtn">🗑️</button>
-      </div>
-    </div>
-
-    <!-- 貼圖面板 -->
-    <div class="toolbar-panel hidden" id="panelSticker">
-      <div class="sticker-search-row">
-        <input type="text" id="stickerSearchInput" class="sticker-search" placeholder="搜尋迷因貼圖…" autocomplete="off"/>
-        <button class="sticker-search-btn" id="stickerSearchBtn">🔍</button>
-      </div>
-      <div class="sticker-grid" id="stickerGrid">
-        <div class="sticker-hint">輸入關鍵字搜尋，或點下方推薦</div>
-        <div class="sticker-tags" id="stickerTags">
-          <button class="sticker-tag" data-q="我的刀盾小狗">🐶 刀盾狗</button>
-          <button class="sticker-tag" data-q="doge meme">🐕 Doge</button>
-          <button class="sticker-tag" data-q="pepe frog">🐸 Pepe</button>
-          <button class="sticker-tag" data-q="this is fine dog fire">🔥 This is fine</button>
-          <button class="sticker-tag" data-q="nyan cat">🌈 Nyan Cat</button>
-          <button class="sticker-tag" data-q="trollface">😏 Trollface</button>
-          <button class="sticker-tag" data-q="gigachad">💪 Gigachad</button>
-          <button class="sticker-tag" data-q="shiba inu meme">🐕 Shiba</button>
-        </div>
       </div>
     </div>
   </div>
 
-  <!-- 手機浮動聊天 -->
-  <div class="mobile-chat" id="mobileChat">
-    <div class="chat-header"><span>💬 CHAT</span><button class="chat-close-btn" id="mobileChatCloseBtn">✕</button></div>
-    <div class="chat-messages" id="mobileChatMessages"></div>
-    <div class="chat-input-area">
-      <input type="text" id="mobileChatInput" class="chat-input" placeholder="說點什麼…" maxlength="200" autocomplete="off"/>
-      <button class="chat-send-btn" id="mobileChatSendBtn">➤</button>
+  <!-- ── 聊天浮動視窗 ── -->
+  <div class="float-panel hidden" id="chatPanel">
+    <div class="panel-header">
+      <span class="panel-title">💬 CHAT</span>
+      <button class="panel-close" id="chatClose">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" class="chat-input" placeholder="說點什麼…" maxlength="200" autocomplete="off"/>
+      <button class="chat-send" id="chatSendBtn">▶</button>
     </div>
   </div>
 
-  <!-- 排隊畫面 -->
+  <!-- ── 貼圖浮動視窗 ── -->
+  <div class="float-panel hidden" id="stickerPanel">
+    <div class="panel-header">
+      <span class="panel-title">🖼️ 貼圖</span>
+      <button class="panel-close" id="stickerPanelClose">✕</button>
+    </div>
+    <div class="sticker-search-row">
+      <input type="text" id="stickerSearchInput" class="sticker-search" placeholder="搜尋迷因…" autocomplete="off"/>
+      <button class="sticker-search-btn" id="stickerSearchBtn">🔍</button>
+    </div>
+    <div class="sticker-tags" id="stickerTags">
+      <button class="sticker-tag" data-q="doge meme">🐕 Doge</button>
+      <button class="sticker-tag" data-q="pepe frog meme">🐸 Pepe</button>
+      <button class="sticker-tag" data-q="this is fine meme">🔥 This is Fine</button>
+      <button class="sticker-tag" data-q="nyan cat">🌈 Nyan Cat</button>
+      <button class="sticker-tag" data-q="trollface meme">😏 Trollface</button>
+      <button class="sticker-tag" data-q="gigachad meme">💪 Gigachad</button>
+      <button class="sticker-tag" data-q="shiba inu meme">🐕 Shiba</button>
+      <button class="sticker-tag" data-q="crying cat meme">😿 Crying Cat</button>
+    </div>
+    <div class="sticker-grid" id="stickerGrid">
+      <div class="sticker-hint">選擇標籤或搜尋關鍵字</div>
+    </div>
+  </div>
+
+  <!-- ── 表情浮動視窗 ── -->
+  <div class="float-panel hidden" id="reactionPanel">
+    <div class="panel-header">
+      <span class="panel-title">表情反應</span>
+      <button class="panel-close" id="reactionPanelClose">✕</button>
+    </div>
+    <div class="reaction-grid">
+      <button class="reaction-big-btn" data-emoji="👍">👍</button>
+      <button class="reaction-big-btn" data-emoji="😂">😂</button>
+      <button class="reaction-big-btn" data-emoji="😮">😮</button>
+      <button class="reaction-big-btn" data-emoji="🔥">🔥</button>
+      <button class="reaction-big-btn" data-emoji="💀">💀</button>
+      <button class="reaction-big-btn" data-emoji="❓">❓</button>
+    </div>
+  </div>
+
+  <!-- ── 排隊畫面 ── -->
   <div id="queueScreen" class="queue-screen hidden">
     <div class="queue-box">
       <div class="queue-icon">⏳</div>
-      <h2>房間已滿，排隊等候中</h2>
-      <p>你是第 <strong id="queuePos">?</strong> 位</p>
-      <p class="queue-sub">有人離開時會自動讓你進入</p>
-      <button class="queue-leave-btn" onclick="window.location.href='index.html'">離開排隊</button>
+      <h2>房間已滿</h2>
+      <p>排隊第 <strong id="queuePos">?</strong> 位</p>
+      <p class="queue-sub">有人離開會自動入場</p>
+      <button class="queue-leave" onclick="window.location.href='index.html'">離開排隊</button>
     </div>
   </div>
 
-  <div id="voteToast" class="vote-toast hidden">🗳️ 清除投票：<span id="voteCount">0</span> / <span id="voteNeeded">0</span></div>
-  <div id="notifToast" class="notif-toast hidden"></div>
+  <!-- ── Toasts ── -->
+  <div id="voteToast" class="toast vote-toast hidden">🗳️ 清除投票 <span id="voteCount">0</span>/<span id="voteNeeded">0</span></div>
+  <div id="notifToast" class="toast notif-toast hidden"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/room.js"></script>

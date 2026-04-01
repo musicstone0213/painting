@@ -27,25 +27,38 @@ app.post('/api/search-stickers', async (req, res) => {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'interleaved-thinking-2025-05-14'
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        max_tokens: 1024,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        system: `你是迷因貼圖搜尋助手。搜尋相關迷因圖片，只回傳 JSON 陣列，包含 6~8 張圖片的直連 URL（.png .jpg .gif .webp 結尾）。格式：["url1","url2",...] 不加任何其他文字。`,
-        messages: [{ role: 'user', content: `搜尋迷因圖片：${query}` }]
+        system: `You are a meme image search assistant. Search for meme images related to the query. Return ONLY a raw JSON array of 5-8 direct image URLs (ending in .png, .jpg, .gif, or .webp). No markdown, no explanation, no code blocks. Example output: ["https://example.com/a.jpg","https://example.com/b.png"]`,
+        messages: [{ role: 'user', content: `Search meme images for: ${query}` }]
       })
     });
 
     const data = await response.json();
+    console.log('[貼圖API回應]', JSON.stringify(data.content?.map(b=>b.type)));
+
+    // 取出所有 text block 合併
     const text = (data.content || [])
       .filter(b => b.type === 'text')
-      .map(b => b.text).join('');
-    const clean = text.replace(/```json|```/g, '').trim();
-    const urls  = JSON.parse(clean);
+      .map(b => b.text)
+      .join('');
+
+    console.log('[貼圖原始文字]', text.slice(0, 300));
+
+    // 嘗試從文字中抽取 JSON 陣列
+    const match = text.match(/\[.*?\]/s);
+    if (!match) {
+      console.error('[貼圖] 找不到 JSON 陣列');
+      return res.json({ urls: [] });
+    }
+
+    const urls = JSON.parse(match[0]);
     res.json({ urls: Array.isArray(urls) ? urls : [] });
+
   } catch(err) {
     console.error('[貼圖搜尋失敗]', err.message);
     res.json({ urls: [], error: err.message });
