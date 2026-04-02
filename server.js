@@ -12,24 +12,36 @@ const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 async function redisSet(key, value) {
   if (!REDIS_URL || !REDIS_TOKEN) return;
   try {
-    await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
+    // Upstash REST API 正確格式：POST body 為 ["SET", key, value]
+    const res = await fetch(REDIS_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${REDIS_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ value })
+      body: JSON.stringify(['SET', key, value])
     });
+    const data = await res.json();
+    if (data.error) console.error('[Redis SET error]', data.error);
+    else console.log(`[Redis SET OK] ${key} (${Math.round(value.length/1024)}KB)`);
   } catch(e) { console.error('[Redis SET 失敗]', e.message); }
 }
 
 async function redisGet(key) {
   if (!REDIS_URL || !REDIS_TOKEN) return null;
   try {
-    const res  = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
-      headers: { 'Authorization': `Bearer ${REDIS_TOKEN}` }
+    // Upstash REST API 正確格式：POST body 為 ["GET", key]
+    const res = await fetch(REDIS_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${REDIS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(['GET', key])
     });
     const data = await res.json();
+    if (data.error) { console.error('[Redis GET error]', data.error); return null; }
+    console.log(`[Redis GET] ${key}: ${data.result ? '有資料(' + Math.round((data.result.length||0)/1024) + 'KB)' : '無資料'}`);
     return data.result || null;
   } catch(e) { console.error('[Redis GET 失敗]', e.message); return null; }
 }
