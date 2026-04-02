@@ -51,7 +51,6 @@ const colorPicker      = document.getElementById('colorPicker');
 const swatches         = document.querySelectorAll('.swatch');
 const brushBtns        = document.querySelectorAll('.brush-btn');
 const sizeBtns         = document.querySelectorAll('.size-btn');
-const pasteImgBtn      = document.getElementById('pasteImgBtn');
 const voteToast        = document.getElementById('voteToast');
 const voteCountEl      = document.getElementById('voteCount');
 const voteNeededEl     = document.getElementById('voteNeeded');
@@ -67,7 +66,6 @@ const fabModeIcon      = document.getElementById('fabModeIcon');
 const fabModeLabel     = document.getElementById('fabModeLabel');
 const fabMenu          = document.getElementById('fabMenu');
 const fabChat          = document.getElementById('fabChat');
-const fabSticker       = document.getElementById('fabSticker');
 const fabReaction      = document.getElementById('fabReaction');
 const fabClear         = document.getElementById('fabClear');
 
@@ -141,6 +139,22 @@ reactionLayer.style.width  = CANVAS_W + 'px';
 reactionLayer.style.height = CANVAS_H + 'px';
 danmakuLayer.style.width  = CANVAS_W + 'px';
 danmakuLayer.style.height = CANVAS_H + 'px';
+
+/** 套用縮放到 canvas（CSS transform，不影響實際解析度） */
+function applyScale() {
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.transform = `scale(${canvasScale})`;
+  cursorLayer.style.transform = `scale(${canvasScale})`;
+  cursorLayer.style.transformOrigin = '0 0';
+}
+
+/** 螢幕座標 → 畫布實際座標（考慮縮放與捲動） */
+function screenToCanvas(clientX, clientY) {
+  return {
+    x: (clientX + viewport.scrollLeft) / canvasScale,
+    y: (clientY + viewport.scrollTop)  / canvasScale
+  };
+}
 
 function fillWhite(x=0, y=0, w=CANVAS_W, h=CANVAS_H) {
   ctx.fillStyle = '#ffffff';
