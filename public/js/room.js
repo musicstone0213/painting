@@ -12,18 +12,52 @@ sessionStorage.removeItem('queued');
 sessionStorage.removeItem('queuePos');
 
 const socket = io({
-  reconnection:      true,
-  reconnectionDelay: 1000,
-  reconnectionAttempts: 10,
-  timeout: 20000
+  reconnection:        true,
+  reconnectionDelay:   1000,
+  reconnectionAttempts:20,
+  timeout:             20000
 });
 
-// 心跳：每 25 秒 ping 伺服器，防止 Render 閒置切斷
-setInterval(() => { if (socket.connected) socket.emit('ping'); }, 25000);
+// ── 連線狀態 HUD ──────────────────────────────────
+function setConnectionStatus(status) {
+  // status: 'connected' | 'disconnected' | 'reconnecting'
+  const dot = document.querySelector('.hud-dot');
+  const onlineEl = document.getElementById('onlineCount');
+  if (!dot) return;
+  if (status === 'connected') {
+    dot.style.background = '#4cff91';
+    dot.style.animation  = 'pulse 2s infinite';
+    if (onlineEl) onlineEl.style.opacity = '1';
+  } else if (status === 'disconnected') {
+    dot.style.background = '#FF6B6B';
+    dot.style.animation  = 'none';
+    if (onlineEl) onlineEl.style.opacity = '0.4';
+  } else {
+    dot.style.background = '#FFD93D';
+    dot.style.animation  = 'pulse .5s infinite';
+  }
+}
+
+// 心跳：每 20 秒 ping 伺服器，防止 Render 閒置切斷
+setInterval(() => { if (socket.connected) socket.emit('ping'); }, 20000);
+
+socket.on('connect', () => {
+  setConnectionStatus('connected');
+});
+
+socket.on('disconnect', (reason) => {
+  setConnectionStatus('disconnected');
+  showNotif('⚠️ 已斷線：' + reason);
+});
+
+socket.on('reconnecting', () => {
+  setConnectionStatus('reconnecting');
+  showNotif('🔄 重新連線中…');
+});
 
 // 重連後自動重新加入房間並載入畫布
 socket.on('reconnect', () => {
-  showNotif('🔄 重新連線中…');
+  setConnectionStatus('connected');
   socket.emit('joinRoom', { roomCode, nickname }, (res) => {
     if (!res.success) return;
     onlineCount.textContent = res.roomInfo.userCount;
@@ -34,6 +68,11 @@ socket.on('reconnect', () => {
       img.onload = () => { fillWhite(); ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H); };
     }
   });
+});
+
+socket.on('reconnect_failed', () => {
+  setConnectionStatus('disconnected');
+  showNotif('❌ 無法連線，請重新整理頁面');
 });
 
 // ── DOM ──────────────────────────────────────────

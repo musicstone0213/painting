@@ -132,14 +132,18 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 
 /* ══ FLOAT PANELS ════════════════════════════ */
 .float-panel{
-  position:fixed;bottom:calc(var(--drawer-peek) + 8px);right:16px;
-  width:min(320px, calc(100vw - 32px));
+  position:fixed;
+  bottom:calc(var(--drawer-peek) + 8px);
+  left:12px;              /* 左下角，遠離右側 FAB */
+  right:86px;             /* 右側留空給 FAB（56px + 16px + 14px） */
+  width:auto;             /* 自動撐滿左右邊界 */
+  max-width:360px;        /* 桌機不要太寬 */
   background:var(--navy2);
   border:2px solid var(--yellow);
   box-shadow:4px 4px 0 var(--red2);
   z-index:65;
   display:flex;flex-direction:column;
-  max-height:60vh;
+  max-height:55vh;
 }
 .float-panel.hidden{display:none!important;}
 .panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,221,61,.2);flex-shrink:0;}
@@ -231,8 +235,10 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 /* ── 手機鍵盤彈出時聊天面板上移 ── */
 @media (max-width: 767px) {
   .float-panel {
-    /* 鍵盤彈出時面板跟著上移，不被蓋住 */
-    bottom: env(keyboard-inset-height, calc(var(--drawer-peek) + 8px));
+    left: 8px;
+    right: 80px;          /* 右側讓 FAB 按鈕 */
+    max-width: none;
+    bottom: calc(var(--drawer-peek) + 8px);
     max-height: 50vh;
   }
   /* 聊天輸入行固定在面板底部 */
@@ -245,9 +251,4 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 }
 
 /* iOS Safari：輸入框 focus 時整體位置調整 */
-@supports (-webkit-touch-callout: none) {
-  .float-panel {
-    /* iOS 上用 fixed + 動態 bottom */
-    bottom: calc(var(--drawer-peek) + 8px);
-  }
-}
+
