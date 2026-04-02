@@ -58,10 +58,6 @@
         <span class="fab-item-icon">💬</span>
         <span class="fab-item-label">聊天</span>
       </button>
-      <button class="fab-item" id="fabSticker">
-        <span class="fab-item-icon">🖼️</span>
-        <span class="fab-item-label">貼圖</span>
-      </button>
       <button class="fab-item" id="fabReaction">
         <span class="fab-item-icon">😂</span>
         <span class="fab-item-label">表情</span>
@@ -69,6 +65,10 @@
       <button class="fab-item" id="fabClear">
         <span class="fab-item-icon">🗑️</span>
         <span class="fab-item-label">清除投票</span>
+      </button>
+      <button class="fab-item" id="fabUploadImg">
+        <span class="fab-item-icon">📎</span>
+        <span class="fab-item-label">插入圖片 / 摳圖</span>
       </button>
     </div>
     <!-- 主按鈕 -->
@@ -92,7 +92,6 @@
           <button class="swatch" style="background-color:#C77DFF;" data-color="#C77DFF"></button>
           <button class="swatch" style="background-color:#ffffff;border-color:#888;" data-color="#ffffff"></button>
         </div>
-        <button class="paste-btn" id="pasteImgBtn" title="從相簿選圖 / 貼上 iPhone 摳圖">📎</button>
       </div>
       <!-- 畫筆列 -->
       <div class="tool-row brush-row">
@@ -123,31 +122,6 @@
     <div class="chat-input-row">
       <input type="text" id="chatInput" class="chat-input" placeholder="說點什麼…" maxlength="200" autocomplete="off"/>
       <button class="chat-send" id="chatSendBtn">▶</button>
-    </div>
-  </div>
-
-  <!-- ── 貼圖浮動視窗 ── -->
-  <div class="float-panel hidden" id="stickerPanel">
-    <div class="panel-header">
-      <span class="panel-title">🖼️ 貼圖</span>
-      <button class="panel-close" id="stickerPanelClose">✕</button>
-    </div>
-    <div class="sticker-search-row">
-      <input type="text" id="stickerSearchInput" class="sticker-search" placeholder="搜尋迷因…" autocomplete="off"/>
-      <button class="sticker-search-btn" id="stickerSearchBtn">🔍</button>
-    </div>
-    <div class="sticker-tags" id="stickerTags">
-      <button class="sticker-tag" data-q="doge meme">🐕 Doge</button>
-      <button class="sticker-tag" data-q="pepe frog meme">🐸 Pepe</button>
-      <button class="sticker-tag" data-q="this is fine meme">🔥 This is Fine</button>
-      <button class="sticker-tag" data-q="nyan cat">🌈 Nyan Cat</button>
-      <button class="sticker-tag" data-q="trollface meme">😏 Trollface</button>
-      <button class="sticker-tag" data-q="gigachad meme">💪 Gigachad</button>
-      <button class="sticker-tag" data-q="shiba inu meme">🐕 Shiba</button>
-      <button class="sticker-tag" data-q="crying cat meme">😿 Crying Cat</button>
-    </div>
-    <div class="sticker-grid" id="stickerGrid">
-      <div class="sticker-hint">選擇標籤或搜尋關鍵字</div>
     </div>
   </div>
 

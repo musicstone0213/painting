@@ -39,6 +39,7 @@ const queuePosEl       = document.getElementById('queuePos');
 // FAB
 const fabMain          = document.getElementById('fabMain');
 const fabModeToggle    = document.getElementById('fabModeToggle');
+const fabUploadImg     = document.getElementById('fabUploadImg');
 const fabModeIcon      = document.getElementById('fabModeIcon');
 const fabModeLabel     = document.getElementById('fabModeLabel');
 const fabMenu          = document.getElementById('fabMenu');
@@ -57,11 +58,6 @@ const chatMessages     = document.getElementById('chatMessages');
 const chatInput        = document.getElementById('chatInput');
 const chatSendBtn      = document.getElementById('chatSendBtn');
 const chatClose        = document.getElementById('chatClose');
-const stickerPanel     = document.getElementById('stickerPanel');
-const stickerPanelClose= document.getElementById('stickerPanelClose');
-const stickerSearchInput=document.getElementById('stickerSearchInput');
-const stickerSearchBtn = document.getElementById('stickerSearchBtn');
-const stickerGrid      = document.getElementById('stickerGrid');
 const reactionPanel    = document.getElementById('reactionPanel');
 const reactionPanelClose=document.getElementById('reactionPanelClose');
 const reactionBigBtns  = document.querySelectorAll('.reaction-big-btn');
@@ -354,9 +350,10 @@ document.addEventListener('paste', (e)=>{
 });
 
 // ── 手機貼上按鈕 ──────────────────────────────────
-// 📎 按鈕：直接開相簿選圖
-pasteImgBtn.addEventListener('click', ()=>{
+// FAB 插入圖片按鈕
+fabUploadImg.addEventListener('click', ()=>{
   if (inQueue) return;
+  closeFab();
   openFilePicker();
 });
 
@@ -470,17 +467,15 @@ fabModeToggle.addEventListener('click', () => {
 });
 
 fabChat.addEventListener('click',()=>{ togglePanel(chatPanel); closeFab(); });
-fabSticker.addEventListener('click',()=>{ togglePanel(stickerPanel); closeFab(); });
 fabReaction.addEventListener('click',()=>{ togglePanel(reactionPanel); closeFab(); });
 fabClear.addEventListener('click',()=>{ if(inQueue)return; socket.emit('requestClear'); showNotif('🗳️ 已投票清除'); closeFab(); });
 
 function togglePanel(panel) {
   const isHidden = panel.classList.contains('hidden');
-  [chatPanel,stickerPanel,reactionPanel].forEach(p=>p.classList.add('hidden'));
+  [chatPanel,reactionPanel].forEach(p=>p.classList.add('hidden'));
   if (isHidden) panel.classList.remove('hidden');
 }
 chatClose.addEventListener('click',()=>chatPanel.classList.add('hidden'));
-stickerPanelClose.addEventListener('click',()=>stickerPanel.classList.add('hidden'));
 reactionPanelClose.addEventListener('click',()=>reactionPanel.classList.add('hidden'));
 
 // ══════════════════════════════════════════════════
@@ -537,63 +532,7 @@ reactionBigBtns.forEach(btn=>{
   btn.addEventListener('click',()=>{ if(inQueue)return; socket.emit('reaction',{emoji:btn.dataset.emoji}); });
 });
 
-// ══════════════════════════════════════════════════
-// 貼圖
-// ══════════════════════════════════════════════════
-async function searchStickers(query){
-  stickerGrid.innerHTML='<div class="sticker-loading">🔍 搜尋中...</div>';
-  try {
-    const res=await fetch('/api/search-stickers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query})});
-    const data=await res.json();
-    if (data.urls&&data.urls.length>0) renderStickerResults(data.urls);
-    else stickerGrid.innerHTML='<div class="sticker-error">沒有找到圖片 🤔</div>';
-  } catch(err){ stickerGrid.innerHTML='<div class="sticker-error">搜尋失敗 😢</div>'; }
-}
-function renderStickerResults(urls){
-  stickerGrid.innerHTML='';
-  urls.forEach(url=>{
-    const img=document.createElement('img'); img.src=url; img.className='sticker-item'; img.crossOrigin='anonymous';
-    img.onerror=()=>img.remove();
-    img.addEventListener('click',()=>activateStickerPreview(img));
-    stickerGrid.appendChild(img);
-  });
-}
-function activateStickerPreview(imgEl){
-  stickerPreviewImg.src=imgEl.src;
-  stickerData.w=160; stickerData.h=160;
-  stickerData.x=viewport.scrollLeft+(window.innerWidth-160)/2;
-  stickerData.y=viewport.scrollTop+(window.innerHeight-160)/2;
-  updateStickerPos();
-  stickerPreview.classList.remove('hidden');
-  stickerPanel.classList.add('hidden');
-}
-function updateStickerPos(){
-  stickerPreview.style.left=stickerData.x+'px'; stickerPreview.style.top=stickerData.y+'px';
-  stickerPreview.style.width=stickerData.w+'px'; stickerPreview.style.height=stickerData.h+'px';
-}
-stickerPreview.addEventListener('mousedown',(e)=>{ if(e.target===stickerHandle)return; stickerData.dragging=true; stickerData.dragOffX=e.clientX+viewport.scrollLeft-stickerData.x; stickerData.dragOffY=e.clientY+viewport.scrollTop-stickerData.y; e.preventDefault(); });
-stickerHandle.addEventListener('mousedown',(e)=>{ stickerData.resizing=true; e.preventDefault(); e.stopPropagation(); });
-document.addEventListener('mousemove',(e)=>{
-  if (stickerData.dragging){ stickerData.x=e.clientX+viewport.scrollLeft-stickerData.dragOffX; stickerData.y=e.clientY+viewport.scrollTop-stickerData.dragOffY; updateStickerPos(); }
-  if (stickerData.resizing){ stickerData.w=Math.max(40,e.clientX+viewport.scrollLeft-stickerData.x); stickerData.h=Math.max(40,e.clientY+viewport.scrollTop-stickerData.y); updateStickerPos(); }
-});
-document.addEventListener('mouseup',()=>{ stickerData.dragging=false; stickerData.resizing=false; });
-
-stickerConfirmBtn.addEventListener('click',()=>{
-  const img=new Image(); img.crossOrigin='anonymous'; img.src=stickerPreviewImg.src;
-  img.onload=()=>{
-    ctx.drawImage(img,stickerData.x,stickerData.y,stickerData.w,stickerData.h);
-    const tmp=document.createElement('canvas'); tmp.width=CANVAS_W; tmp.height=CANVAS_H;
-    tmp.getContext('2d').drawImage(img,stickerData.x,stickerData.y,stickerData.w,stickerData.h);
-    socket.emit('placeSticker',{dataURL:tmp.toDataURL('image/png'),x:stickerData.x,y:stickerData.y,w:stickerData.w,h:stickerData.h});
-    socket.emit('saveSnapshot',{snapshot:canvas.toDataURL('image/jpeg',.6)});
-  };
-  stickerPreview.classList.add('hidden');
-});
-stickerCancelBtn.addEventListener('click',()=>stickerPreview.classList.add('hidden'));
-stickerSearchBtn.addEventListener('click',()=>{ const q=stickerSearchInput.value.trim(); if(q)searchStickers(q); });
-stickerSearchInput.addEventListener('keydown',e=>{ if(e.key==='Enter')stickerSearchBtn.click(); });
-document.querySelectorAll('.sticker-tag').forEach(tag=>{ tag.addEventListener('click',()=>{ stickerSearchInput.value=tag.dataset.q; searchStickers(tag.dataset.q); }); });
+ });
 
 // ══════════════════════════════════════════════════
 // 工具函式

@@ -159,19 +159,7 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 .chat-input::placeholder{color:#333;}
 .chat-send{background:var(--yellow);border:none;color:var(--navy);width:40px;font-family:'Press Start 2P',monospace;font-size:9px;cursor:pointer;flex-shrink:0;}
 
-/* sticker */
-.sticker-search-row{display:flex;gap:0;padding:8px 12px;border-bottom:1px solid rgba(255,221,61,.1);}
-.sticker-search{flex:1;background:#0d0d1a;border:1px solid rgba(255,221,61,.3);border-right:none;color:#fff;padding:8px 10px;font-size:11px;font-family:'Noto Sans TC',sans-serif;outline:none;}
-.sticker-search-btn{background:var(--yellow);border:none;color:var(--navy);width:36px;font-size:14px;cursor:pointer;flex-shrink:0;}
-.sticker-tags{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px;border-bottom:1px solid rgba(255,221,61,.1);}
-.sticker-tag{font-size:8px;background:rgba(78,205,196,.1);border:1px solid rgba(78,205,196,.3);color:#4ECDC4;padding:5px 8px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:background .15s;}
-.sticker-tag:hover{background:rgba(78,205,196,.25);}
-.sticker-grid{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;overflow-y:auto;max-height:140px;}
-.sticker-hint{font-size:9px;color:#555;width:100%;font-family:'Noto Sans TC',sans-serif;}
-.sticker-item{width:54px;height:54px;border:2px solid transparent;cursor:pointer;object-fit:contain;background:rgba(255,255,255,.05);transition:border-color .15s;}
-.sticker-item:hover{border-color:#4ECDC4;}
-.sticker-loading{font-size:9px;color:#555;width:100%;text-align:center;padding:12px 0;font-family:'Noto Sans TC',sans-serif;}
-.sticker-error{font-size:9px;color:var(--red);width:100%;font-family:'Noto Sans TC',sans-serif;}
+
 
 /* reaction */
 .reaction-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;}

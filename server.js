@@ -4,6 +4,35 @@
 
 require('dotenv').config();
 const express = require('express');
+
+// ── Upstash Redis（用 REST API，不需安裝套件） ────
+const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+async function redisSet(key, value) {
+  if (!REDIS_URL || !REDIS_TOKEN) return;
+  try {
+    await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${REDIS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ value })
+    });
+  } catch(e) { console.error('[Redis SET 失敗]', e.message); }
+}
+
+async function redisGet(key) {
+  if (!REDIS_URL || !REDIS_TOKEN) return null;
+  try {
+    const res  = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { 'Authorization': `Bearer ${REDIS_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result || null;
+  } catch(e) { console.error('[Redis GET 失敗]', e.message); return null; }
+}
 const http    = require('http');
 const { Server } = require('socket.io');
 const path    = require('path');
@@ -16,10 +45,6 @@ const PORT   = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// ── 貼圖搜尋 API（後端代理，避免 CORS） ────────────
-app.post('/api/search-stickers', async (req, res) => {
-  const { query } = req.body;
-  if (!query) return res.json({ urls: [] });
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -99,6 +124,18 @@ function initPermanentRooms() {
   });
 }
 initPermanentRooms();
+
+/** 伺服器啟動時從 Redis 載入各房間畫布快照 */
+async function loadSnapshotsFromRedis() {
+  for (const code of Object.keys(rooms)) {
+    const snapshot = await redisGet(`canvas:${code}`);
+    if (snapshot) {
+      rooms[code].canvasSnapshot = snapshot;
+      console.log(`[Redis] 載入畫布快照：${code}`);
+    }
+  }
+}
+loadSnapshotsFromRedis();
 
 // ── 工具 ──────────────────────────────────────────
 function generateCode() {
@@ -331,10 +368,14 @@ io.on('connection', (socket) => {
     socket.to(rc).emit('cursorMove', { socketId: socket.id, x, y, name });
   });
 
-  // ── 儲存快照 ────────────────────────────────────
+  // ── 儲存快照（同步寫入 Redis 永久保存） ─────────
   socket.on('saveSnapshot', ({ snapshot }) => {
     const rc = socket.roomCode;
-    if (rc && rooms[rc]) rooms[rc].canvasSnapshot = snapshot;
+    if (rc && rooms[rc]) {
+      rooms[rc].canvasSnapshot = snapshot;
+      // 非同步寫入 Redis，不阻塞主流程
+      redisSet(`canvas:${rc}`, snapshot).catch(()=>{});
+    }
   });
 
   // ── 清除畫布（純投票制，無房主） ───────────────
@@ -352,6 +393,7 @@ io.on('connection', (socket) => {
     if (current >= needed) {
       room.canvasSnapshot = null;
       room.clearVotes.clear();
+      redisSet(`canvas:${rc}`, '').catch(()=>{}); // 清除 Redis 快照
       io.to(rc).emit('clearCanvas');
     }
   });
