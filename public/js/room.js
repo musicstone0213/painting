@@ -38,6 +38,9 @@ const queuePosEl       = document.getElementById('queuePos');
 
 // FAB
 const fabMain          = document.getElementById('fabMain');
+const fabModeToggle    = document.getElementById('fabModeToggle');
+const fabModeIcon      = document.getElementById('fabModeIcon');
+const fabModeLabel     = document.getElementById('fabModeLabel');
 const fabMenu          = document.getElementById('fabMenu');
 const fabChat          = document.getElementById('fabChat');
 const fabSticker       = document.getElementById('fabSticker');
@@ -82,6 +85,12 @@ let isDrawing    = false;
 let lastX=0, lastY=0;
 let inQueue      = initQueued;
 let fabOpen      = false;
+let canvasMode   = 'draw'; // 'draw' | 'pan'（繪圖模式 / 移動模式）
+
+// 移動模式用的拖曳追蹤
+let isPanning    = false;
+let panStartX    = 0, panStartY    = 0;
+let panScrollX   = 0, panScrollY   = 0;
 const remoteCursors = {};
 let stickerData  = { x:200, y:200, w:150, h:150, dragging:false, resizing:false, dragOffX:0, dragOffY:0 };
 
@@ -230,15 +239,14 @@ function applyBrush(c, x0, y0, x1, y1, color, size, brush, vx, vy) {
 }
 
 function onDrawStart(e) {
-  if (inQueue) return;
-  // 如果點到 UI 元件就不畫
+  if (inQueue || canvasMode !== 'draw') return;
   if (e.target !== canvas) return;
   isDrawing=true;
   const {x,y}=getPos(e);
   lastX=x; lastY=y;
 }
 function onDrawMove(e) {
-  if (inQueue||!isDrawing) return;
+  if (inQueue||!isDrawing||canvasMode !== 'draw') return;
   if (e.target !== canvas && !isDrawing) return;
   const {x,y}=getPos(e);
   const vx=x-lastX, vy=y-lastY;
@@ -255,13 +263,70 @@ function onDrawEnd() {
   socket.emit('saveSnapshot',{snapshot:canvas.toDataURL('image/jpeg',.6)});
 }
 
-canvas.addEventListener('mousedown',  onDrawStart);
-canvas.addEventListener('mousemove',  onDrawMove);
-canvas.addEventListener('mouseup',    onDrawEnd);
-canvas.addEventListener('mouseleave', onDrawEnd);
-canvas.addEventListener('touchstart',  onDrawStart, {passive:false});
-canvas.addEventListener('touchmove',   onDrawMove,  {passive:false});
-canvas.addEventListener('touchend',    onDrawEnd);
+canvas.addEventListener('mousedown', (e) => {
+  if (canvasMode === 'pan') {
+    isPanning  = true;
+    panStartX  = e.clientX; panStartY  = e.clientY;
+    panScrollX = viewport.scrollLeft; panScrollY = viewport.scrollTop;
+    canvas.style.cursor = 'grabbing';
+  } else {
+    onDrawStart(e);
+  }
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (canvasMode === 'pan' && isPanning) {
+    viewport.scrollLeft = panScrollX - (e.clientX - panStartX);
+    viewport.scrollTop  = panScrollY - (e.clientY - panStartY);
+  } else {
+    onDrawMove(e);
+  }
+});
+canvas.addEventListener('mouseup', (e) => {
+  if (canvasMode === 'pan') { isPanning=false; canvas.style.cursor='grab'; }
+  else onDrawEnd();
+});
+canvas.addEventListener('mouseleave', (e) => {
+  if (canvasMode === 'pan') { isPanning=false; }
+  else onDrawEnd();
+});
+canvas.addEventListener('touchstart', (e) => {
+  if (canvasMode === 'pan') {
+    // 移動模式：記錄起始位置
+    isPanning = true;
+    const t = e.touches[0];
+    panStartX  = t.clientX;
+    panStartY  = t.clientY;
+    panScrollX = viewport.scrollLeft;
+    panScrollY = viewport.scrollTop;
+    e.preventDefault();
+  } else {
+    if (e.touches.length === 1) onDrawStart(e);
+    else onDrawEnd();
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchmove', (e) => {
+  if (canvasMode === 'pan' && isPanning) {
+    // 移動模式：拖動畫布
+    const t = e.touches[0];
+    const dx = t.clientX - panStartX;
+    const dy = t.clientY - panStartY;
+    viewport.scrollLeft = panScrollX - dx;
+    viewport.scrollTop  = panScrollY - dy;
+    e.preventDefault();
+  } else if (canvasMode === 'draw') {
+    if (e.touches.length === 1) onDrawMove(e);
+    e.preventDefault();
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchend', (e) => {
+  if (canvasMode === 'pan') {
+    isPanning = false;
+  } else {
+    if (e.touches.length === 0) onDrawEnd();
+  }
+});
 
 // ── 貼上圖片 Ctrl+V ──────────────────────────────
 document.addEventListener('paste', (e)=>{
@@ -289,27 +354,13 @@ document.addEventListener('paste', (e)=>{
 });
 
 // ── 手機貼上按鈕 ──────────────────────────────────
-// 手機貼上圖片：優先用 clipboard API，降級用 file picker
-pasteImgBtn.addEventListener('click', async ()=>{
+// 📎 按鈕：直接開相簿選圖
+pasteImgBtn.addEventListener('click', ()=>{
   if (inQueue) return;
+  openFilePicker();
+});
 
-  // 先嘗試 Clipboard API（Android Chrome 支援）
-  if (navigator.clipboard && navigator.clipboard.read) {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const t = item.types.find(t => t.startsWith('image/'));
-        if (t) {
-          const blob = await item.getType(t);
-          pasteImageBlob(blob); return;
-        }
-      }
-    } catch(err) {
-      // 權限被拒或不支援，降級到 file picker
-    }
-  }
-
-  // 降級：開啟檔案選擇器（iOS Safari 友善）
+function openFilePicker() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -321,6 +372,22 @@ pasteImgBtn.addEventListener('click', async ()=>{
     document.body.removeChild(input);
   });
   input.click();
+}
+
+// 長按摳圖貼上（iOS Ctrl+V / 系統貼上選單）
+// iOS Safari 在用戶主動觸發時（長按後點「貼上」）會觸發 paste 事件
+document.addEventListener('paste', (e) => {
+  if (inQueue) return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      pasteImageBlob(item.getAsFile());
+      showNotif('✅ 圖片已貼上！');
+      return;
+    }
+  }
 });
 
 function pasteImageBlob(blob) {
@@ -381,6 +448,26 @@ fabMain.addEventListener('click',()=>{
   fabMain.textContent = fabOpen ? '✕' : '✏️';
 });
 function closeFab(){ fabOpen=false; fabMenu.classList.add('hidden'); fabMain.textContent='✏️'; }
+
+// 模式切換
+fabModeToggle.addEventListener('click', () => {
+  canvasMode = canvasMode === 'draw' ? 'pan' : 'draw';
+  const isPan = canvasMode === 'pan';
+
+  // 更新按鈕顯示
+  fabModeIcon.textContent  = isPan ? '✏️' : '✋';
+  fabModeLabel.textContent = isPan ? '切換：繪圖模式' : '切換：移動模式';
+  fabModeToggle.style.borderColor = isPan ? '#4ECDC4' : 'rgba(255,221,61,.3)';
+  fabModeToggle.style.color       = isPan ? '#4ECDC4' : '';
+
+  // 更新主按鈕 icon 和游標
+  fabMain.textContent = isPan ? '✋' : '✏️';
+  viewport.style.cursor = isPan ? 'grab' : 'crosshair';
+  canvas.style.cursor   = isPan ? 'grab' : 'crosshair';
+
+  showNotif(isPan ? '✋ 移動模式：拖動畫布' : '✏️ 繪圖模式');
+  closeFab();
+});
 
 fabChat.addEventListener('click',()=>{ togglePanel(chatPanel); closeFab(); });
 fabSticker.addEventListener('click',()=>{ togglePanel(stickerPanel); closeFab(); });

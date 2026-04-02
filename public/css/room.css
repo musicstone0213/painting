@@ -56,7 +56,15 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
 
 /* ══ FAB ════════════════════════════════════ */
-.fab-container{position:fixed;right:16px;bottom:calc(var(--drawer-peek) + 20px);z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.fab-container{
+  position:fixed;
+  right:16px;
+  bottom:calc(var(--drawer-peek) + 16px);
+  z-index:200; /* 確保浮在所有元素上 */
+  display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+  pointer-events:none; /* 讓子元素自行處理點擊 */
+}
+.fab-container > *{pointer-events:all;}
 .fab-main{width:56px;height:56px;background:var(--red);border:none;border-bottom:4px solid var(--red2);color:#fff;font-size:20px;cursor:pointer;box-shadow:3px 3px 0 var(--red2);transition:transform .15s;}
 .fab-main:active{transform:scale(.92);}
 .fab-menu{display:flex;flex-direction:column;gap:6px;align-items:flex-end;transition:opacity .2s,transform .2s;}
@@ -70,7 +78,7 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
   position:fixed;bottom:0;left:0;right:0;
   background:var(--navy2);
   border-top:2px solid var(--yellow);
-  z-index:55;
+  z-index:100;
   transform:translateY(calc(100% - var(--drawer-peek)));
   transition:transform .3s cubic-bezier(.4,0,.2,1);
 }
@@ -80,13 +88,38 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 .drawer-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;}
 .tool-row{display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:2px;}
 .color-row{gap:6px;}
-.color-picker{width:34px;height:34px;border:2px solid var(--yellow);cursor:pointer;padding:0;background:none;flex-shrink:0;}
-.color-picker::-webkit-color-swatch-wrapper{padding:0;}
-.color-picker::-webkit-color-swatch{border:none;}
+.color-picker{
+  width:34px;height:34px;
+  border:2px solid var(--yellow);
+  cursor:pointer;padding:2px;
+  background:#1A1A2E;flex-shrink:0;
+  -webkit-appearance:none;
+  border-radius:0;
+}
+.color-picker::-webkit-color-swatch-wrapper{padding:0;border-radius:0;}
+.color-picker::-webkit-color-swatch{border:none;border-radius:0;}
 .swatches{display:flex;gap:5px;flex-shrink:0;}
-.swatch{width:28px;height:28px;border:2px solid rgba(255,255,255,.18);cursor:pointer;flex-shrink:0;transition:transform .15s,border-color .15s;}
-.swatch.active{border-color:#fff;transform:scale(1.2);}
-.paste-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:#fff;width:32px;height:32px;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:auto;}
+.swatch{
+  width:30px;height:30px;
+  border:2px solid rgba(255,255,255,.25);
+  cursor:pointer;flex-shrink:0;
+  transition:transform .15s,border-color .15s;
+  display:block; /* 確保不繼承奇怪的 display */
+  appearance:none;
+  -webkit-appearance:none;
+}
+.swatch.active{border-color:#fff;transform:scale(1.2);box-shadow:0 0 0 2px rgba(255,255,255,.3);}
+.paste-btn{
+  background:rgba(255,255,255,.12);
+  border:2px solid rgba(255,255,255,.3);
+  color:#fff;width:36px;height:36px;
+  font-size:16px;
+  display:flex!important;
+  align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;
+  margin-left:auto;
+  -webkit-appearance:none;
+}
 .brush-group{display:flex;gap:4px;background:rgba(0,0,0,.3);border:1px solid rgba(255,221,61,.2);padding:3px;flex-shrink:0;}
 .brush-btn{background:none;border:1px solid transparent;font-size:16px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .brush-btn.active{background:rgba(255,221,61,.15);border-color:var(--yellow);}
@@ -162,3 +195,15 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 .notif-toast{top:70px;right:12px;left:auto;transform:none;border-color:rgba(255,221,61,.3);color:#ccc;font-size:9px;animation:slideIn .25s ease;}
 @keyframes slideIn{from{transform:translateX(20px);opacity:0;}to{transform:translateX(0);opacity:1;}}
 .hidden{display:none!important;}
+
+/* ── 移動模式樣式 ── */
+.fab-item#fabModeToggle {
+  border: 1px solid rgba(255,221,61,.3);
+  transition: border-color .2s, color .2s;
+}
+.canvas-viewport.pan-mode {
+  cursor: grab;
+}
+.canvas-viewport.pan-mode:active {
+  cursor: grabbing;
+}
