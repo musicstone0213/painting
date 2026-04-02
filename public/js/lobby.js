@@ -1,11 +1,8 @@
 // ================================================
-// lobby.js — 大廳邏輯 v2
-// 開放房間列表 + 快速加入 + 建立/私人加入
+// lobby.js v3 — 紅色像素風 + 公開房間限 5 間
 // ================================================
-
 const socket = io();
 
-// ── DOM ──────────────────────────────────────────
 const nicknameInput   = document.getElementById('nicknameInput');
 const quickJoinBtn    = document.getElementById('quickJoinBtn');
 const refreshBtn      = document.getElementById('refreshBtn');
@@ -27,77 +24,74 @@ function showError(msg) {
   errorMsg.classList.remove('hidden');
   setTimeout(() => errorMsg.classList.add('hidden'), 4000);
 }
-
 function getNickname() {
   const n = nicknameInput.value.trim();
   if (!n) { showError('請先輸入暱稱！'); nicknameInput.focus(); return null; }
   return n;
 }
-
 function enterRoom({ roomCode, queued, queuePos }) {
-  sessionStorage.setItem('roomCode',  roomCode);
-  sessionStorage.setItem('nickname',  nicknameInput.value.trim());
-  sessionStorage.setItem('queued',    queued ? '1' : '0');
-  sessionStorage.setItem('queuePos',  queuePos || '0');
+  sessionStorage.setItem('roomCode', roomCode);
+  sessionStorage.setItem('nickname', nicknameInput.value.trim());
+  sessionStorage.setItem('queued',   queued ? '1' : '0');
+  sessionStorage.setItem('queuePos', queuePos || '0');
   window.location.href = 'room.html';
+}
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── 房間列表 ──────────────────────────────────────
 function renderRoomList(list) {
   if (!list || list.length === 0) {
-    roomListEl.innerHTML = '<div class="room-list-empty">目前沒有公開房間，快來建立第一間！</div>';
+    roomListEl.innerHTML = '<div class="room-hint">目前沒有公開房間，快來建立第一間！</div>';
     return;
   }
   roomListEl.innerHTML = list.map(r => `
-    <div class="room-item ${r.isFull ? 'full' : ''}"
-         data-code="${r.code}"
-         title="${r.isFull ? `房間已滿，排隊中有 ${r.queueCount} 人` : '點擊加入'}">
-      <span class="room-item-name">${escapeHtml(r.name)}</span>
-      <span class="room-item-meta">
-        <span class="room-item-count">👥 ${r.userCount}/${r.maxUsers}</span>
-        <span class="room-item-badge ${r.isFull ? 'full-badge' : ''}">
-          ${r.isFull ? (r.queueCount > 0 ? `排隊 ${r.queueCount}` : '已滿') : '加入'}
-        </span>
-      </span>
+    <div class="room-item ${r.isFull ? 'full' : ''}" data-code="${r.code}">
+      <div>
+        <div class="room-name">${escapeHtml(r.name)}</div>
+        <div class="room-count">${r.userCount} / ${r.maxUsers} 人${r.queueCount > 0 ? `・排隊 ${r.queueCount}` : ''}</div>
+      </div>
+      ${r.isFull
+        ? `<button class="room-full-badge">FULL</button>`
+        : `<button class="room-join" data-code="${r.code}">JOIN</button>`
+      }
     </div>
   `).join('');
 
-  // 綁定點擊
-  roomListEl.querySelectorAll('.room-item').forEach(el => {
-    el.addEventListener('click', () => {
-      const code = el.dataset.code;
+  roomListEl.querySelectorAll('.room-join').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const nickname = getNickname();
       if (!nickname) return;
-      doJoin(code, nickname);
+      doJoin(btn.dataset.code, nickname);
+    });
+  });
+  // 整列點擊（非滿房）
+  roomListEl.querySelectorAll('.room-item:not(.full)').forEach(el => {
+    el.addEventListener('click', () => {
+      const nickname = getNickname();
+      if (!nickname) return;
+      doJoin(el.dataset.code, nickname);
     });
   });
 }
 
-function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// 伺服器推播更新列表
 socket.on('roomList', renderRoomList);
-
-// 初始拉取
 socket.emit('getRoomList');
 
 refreshBtn.addEventListener('click', () => {
-  refreshBtn.style.transform = 'rotate(360deg)';
-  setTimeout(() => refreshBtn.style.transform = '', 400);
+  refreshBtn.style.color = '#fff';
   socket.emit('getRoomList');
+  setTimeout(() => refreshBtn.style.color = '', 400);
 });
 
-// ── 加入房間邏輯 ──────────────────────────────────
+// ── 加入房間 ──────────────────────────────────────
 function doJoin(roomCode, nickname) {
   socket.emit('joinRoom', { roomCode, nickname }, (res) => {
     if (!res.success) return showError(res.error || '加入失敗');
-
     if (res.canvasSnapshot) sessionStorage.setItem('canvasSnapshot', res.canvasSnapshot);
-
     if (res.queued) {
-      // 排隊中 → 進入房間頁面顯示等待畫面
       enterRoom({ roomCode: res.roomCode, queued: true, queuePos: res.queuePos });
     } else {
       enterRoom({ roomCode: res.roomCode });
@@ -109,7 +103,6 @@ function doJoin(roomCode, nickname) {
 quickJoinBtn.addEventListener('click', () => {
   const nickname = getNickname();
   if (!nickname) return;
-
   quickJoinBtn.disabled = true;
   socket.emit('quickJoin', { nickname }, (res) => {
     quickJoinBtn.disabled = false;
@@ -119,7 +112,7 @@ quickJoinBtn.addEventListener('click', () => {
   });
 });
 
-// ── 展開/收起面板 ────────────────────────────────
+// ── 展開 / 收起 ──────────────────────────────────
 toggleCreateBtn.addEventListener('click', () => {
   createPanel.classList.toggle('hidden');
   joinPanel.classList.add('hidden');
@@ -135,10 +128,8 @@ createBtn.addEventListener('click', () => {
   if (!nickname) return;
   const roomName = roomNameInput.value.trim() || `${nickname} 的房間`;
   const isPublic = isPublicCheck.checked;
-
   createBtn.disabled = true;
-  createBtn.textContent = '建立中...';
-
+  createBtn.textContent = '建立中…';
   socket.emit('createRoom', { nickname, roomName, isPublic }, (res) => {
     createBtn.disabled = false;
     createBtn.textContent = '建立房間';
@@ -155,6 +146,5 @@ joinBtn.addEventListener('click', () => {
   if (code.length !== 6) { showError('房間代碼需為 6 碼'); roomCodeInput.focus(); return; }
   doJoin(code, nickname);
 });
-
-roomCodeInput.addEventListener('input',  () => { roomCodeInput.value = roomCodeInput.value.toUpperCase(); });
+roomCodeInput.addEventListener('input', () => { roomCodeInput.value = roomCodeInput.value.toUpperCase(); });
 roomCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') joinBtn.click(); });

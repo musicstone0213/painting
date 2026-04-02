@@ -76,6 +76,29 @@ app.post('/api/search-stickers', async (req, res) => {
 // }
 const rooms = {};
 const MAX_USERS = 100;
+const PERMANENT_ROOMS = ['PAINT1','PAINT2','PAINT3'];
+
+/** 建立永久預設公開房間 */
+function initPermanentRooms() {
+  const names = ['塗鴉星球 #1', '塗鴉星球 #2', '塗鴉星球 #3'];
+  PERMANENT_ROOMS.forEach((code, i) => {
+    if (!rooms[code]) {
+      rooms[code] = {
+        code,
+        name: names[i],
+        isPublic: true,
+        isPermanent: true,   // 永久房間不刪除
+        maxUsers: MAX_USERS,
+        users: new Map(),
+        queue: [],
+        canvasSnapshot: null,
+        clearVotes: new Set(),
+        createdAt: new Date()
+      };
+    }
+  });
+}
+initPermanentRooms();
 
 // ── 工具 ──────────────────────────────────────────
 function generateCode() {
@@ -150,6 +173,13 @@ io.on('connection', (socket) => {
 
   // ── 建立房間 ────────────────────────────────────
   socket.on('createRoom', ({ nickname, roomName, isPublic }, callback) => {
+    // 公開房間最多 5 間
+    if (isPublic) {
+      const publicCount = Object.values(rooms).filter(r => r.isPublic && !r.isPermanent).length;
+      if (publicCount >= 3) {
+        return callback({ success: false, error: '公開房間已達上限（3 間），請等待現有房間關閉' });
+      }
+    }
     const code = generateCode();
     rooms[code] = {
       code,
@@ -250,7 +280,11 @@ io.on('connection', (socket) => {
       });
     }
 
-    // 全滿 → 自動建立新公開房
+    // 全滿 → 嘗試自動建立新公開房（檢查上限）
+    const publicCount = Object.values(rooms).filter(r => r.isPublic && !r.isPermanent).length;
+    if (publicCount >= 3) {
+      return callback({ success: false, error: '目前公開房間已滿 3 間，請稍後再試或等待有空位的房間' });
+    }
     const code = generateCode();
     rooms[code] = {
       code,
@@ -364,6 +398,11 @@ io.on('connection', (socket) => {
     console.log(`[離線] ${nickname} from ${rc}`);
 
     if (room.users.size === 0 && room.queue.length === 0) {
+      if (room.isPermanent) {
+        // 永久房間不刪除，直接廣播更新
+        broadcastRoomList();
+        return;
+      }
       // 等待 10 秒再刪房，給建立者跳頁後重新連線的時間
       room._deleteTimer = setTimeout(() => {
         if (rooms[rc] && rooms[rc].users.size === 0 && rooms[rc].queue.length === 0) {

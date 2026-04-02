@@ -71,7 +71,10 @@ const stickerCancelBtn = document.getElementById('stickerCancelBtn');
 const stickerHandle    = document.getElementById('stickerHandle');
 
 // ── 狀態 ─────────────────────────────────────────
-const CANVAS_W = 2400, CANVAS_H = 1800; // 大畫布尺寸
+// 無邊界畫布：初始大小，畫到邊緣自動擴展
+let CANVAS_W = 4000, CANVAS_H = 4000;
+const EXPAND_MARGIN = 400; // 距離邊緣多少 px 時擴展
+const EXPAND_SIZE   = 800; // 每次擴展多少 px
 let currentColor = '#1A1A2E';
 let currentSize  = 4;
 let currentBrush = 'pen';
@@ -93,11 +96,43 @@ reactionLayer.style.height = CANVAS_H + 'px';
 danmakuLayer.style.width  = CANVAS_W + 'px';
 danmakuLayer.style.height = CANVAS_H + 'px';
 
-function fillWhite() {
+function fillWhite(x=0, y=0, w=CANVAS_W, h=CANVAS_H) {
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillRect(x, y, w, h);
 }
 fillWhite();
+
+/** 畫到邊緣時擴展畫布（保留現有內容） */
+function expandCanvasIfNeeded(x, y) {
+  let expanded = false;
+  let newW = CANVAS_W, newH = CANVAS_H;
+
+  if (x > CANVAS_W - EXPAND_MARGIN) { newW = CANVAS_W + EXPAND_SIZE; expanded = true; }
+  if (y > CANVAS_H - EXPAND_MARGIN) { newH = CANVAS_H + EXPAND_SIZE; expanded = true; }
+  if (x < EXPAND_MARGIN && viewport.scrollLeft < EXPAND_MARGIN) {
+    // 左側擴展（較少見，忽略以保持簡單）
+  }
+
+  if (!expanded) return;
+
+  // 儲存現有內容
+  const tmp = document.createElement('canvas');
+  tmp.width = CANVAS_W; tmp.height = CANVAS_H;
+  tmp.getContext('2d').drawImage(canvas, 0, 0);
+
+  CANVAS_W = newW; CANVAS_H = newH;
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  cursorLayer.style.width    = CANVAS_W + 'px';
+  cursorLayer.style.height   = CANVAS_H + 'px';
+  reactionLayer.style.width  = CANVAS_W + 'px';
+  reactionLayer.style.height = CANVAS_H + 'px';
+  danmakuLayer.style.width   = CANVAS_W + 'px';
+  danmakuLayer.style.height  = CANVAS_H + 'px';
+
+  fillWhite();
+  ctx.drawImage(tmp, 0, 0);
+}
 
 // 捲動到畫布中央
 viewport.scrollLeft = (CANVAS_W - window.innerWidth)  / 2;
@@ -207,6 +242,7 @@ function onDrawMove(e) {
   if (e.target !== canvas && !isDrawing) return;
   const {x,y}=getPos(e);
   const vx=x-lastX, vy=y-lastY;
+  expandCanvasIfNeeded(x, y); // 靠近邊緣時自動擴展
   const data={x0:lastX,y0:lastY,x1:x,y1:y,color:currentColor,size:currentSize,brush:currentBrush,vx,vy};
   applyBrush(ctx,data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.brush,data.vx,data.vy);
   socket.emit('draw',data);
@@ -253,32 +289,61 @@ document.addEventListener('paste', (e)=>{
 });
 
 // ── 手機貼上按鈕 ──────────────────────────────────
+// 手機貼上圖片：優先用 clipboard API，降級用 file picker
 pasteImgBtn.addEventListener('click', async ()=>{
   if (inQueue) return;
-  try {
-    const items=await navigator.clipboard.read();
-    for (const item of items) {
-      const t=item.types.find(t=>t.startsWith('image/'));
-      if (t) {
-        const blob=await item.getType(t); const url=URL.createObjectURL(blob);
-        const img=new Image();
-        img.onload=()=>{
-          const maxW=CANVAS_W*.4,maxH=CANVAS_H*.4;
-          let w=img.width,h=img.height;
-          if(w>maxW){h=h*maxW/w;w=maxW;} if(h>maxH){w=w*maxH/h;h=maxH;}
-          const x=(CANVAS_W-w)/2,y=(CANVAS_H-h)/2;
-          ctx.drawImage(img,x,y,w,h); URL.revokeObjectURL(url);
-          const tmp=document.createElement('canvas'); tmp.width=CANVAS_W; tmp.height=CANVAS_H;
-          tmp.getContext('2d').drawImage(img,x,y,w,h);
-          socket.emit('pasteImage',{dataURL:tmp.toDataURL('image/png')});
-          socket.emit('saveSnapshot',{snapshot:canvas.toDataURL('image/jpeg',.6)});
-        };
-        img.src=url; return;
+
+  // 先嘗試 Clipboard API（Android Chrome 支援）
+  if (navigator.clipboard && navigator.clipboard.read) {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const t = item.types.find(t => t.startsWith('image/'));
+        if (t) {
+          const blob = await item.getType(t);
+          pasteImageBlob(blob); return;
+        }
       }
+    } catch(err) {
+      // 權限被拒或不支援，降級到 file picker
     }
-    showNotif('剪貼簿中沒有圖片');
-  } catch(err){ showNotif('請先複製圖片再點此'); }
+  }
+
+  // 降級：開啟檔案選擇器（iOS Safari 友善）
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (file) pasteImageBlob(file);
+    document.body.removeChild(input);
+  });
+  input.click();
 });
+
+function pasteImageBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => {
+    const cx = viewport.scrollLeft + window.innerWidth/2;
+    const cy = viewport.scrollTop  + window.innerHeight/2;
+    const maxW = window.innerWidth*.6, maxH = window.innerHeight*.6;
+    let w=img.width, h=img.height;
+    if(w>maxW){h=h*maxW/w;w=maxW;} if(h>maxH){w=w*maxH/h;h=maxH;}
+    const x=cx-w/2, y=cy-h/2;
+    ctx.drawImage(img,x,y,w,h);
+    URL.revokeObjectURL(url);
+    const tmp=document.createElement('canvas'); tmp.width=CANVAS_W; tmp.height=CANVAS_H;
+    tmp.getContext('2d').drawImage(img,x,y,w,h);
+    socket.emit('pasteImage',{dataURL:tmp.toDataURL('image/png')});
+    socket.emit('saveSnapshot',{snapshot:canvas.toDataURL('image/jpeg',.6)});
+    showNotif('✅ 圖片已貼上');
+  };
+  img.onerror = () => showNotif('無法讀取圖片');
+  img.src = url;
+}
 
 // ══════════════════════════════════════════════════
 // Socket 接收
