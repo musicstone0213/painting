@@ -165,6 +165,11 @@ let isDraggingImg  = false;
 // 圖片放置預覽模式
 let placingImg     = null; // { src, w, h } 待放置的圖片
 let placingEl      = null; // DOM 預覽元素
+
+// offscreen canvas：儲存純筆跡（不含圖片物件）
+// 移動圖片時從此還原，避免殘影
+const offscreenCanvas = document.createElement('canvas');
+let offscreenCtx      = offscreenCanvas.getContext('2d');
 const remoteCursors = {};
 let stickerData  = { x:200, y:200, w:150, h:150, dragging:false, resizing:false, dragOffX:0, dragOffY:0 };
 
@@ -172,6 +177,8 @@ let stickerData  = { x:200, y:200, w:150, h:150, dragging:false, resizing:false,
 roomCodeDisp.textContent = roomCode;
 canvas.width  = CANVAS_W;
 canvas.height = CANVAS_H;
+offscreenCanvas.width  = CANVAS_W;
+offscreenCanvas.height = CANVAS_H;
 cursorLayer.style.width  = CANVAS_W + 'px';
 cursorLayer.style.height = CANVAS_H + 'px';
 reactionLayer.style.width  = CANVAS_W + 'px';
@@ -198,6 +205,8 @@ function screenToCanvas(clientX, clientY) {
 function fillWhite(x=0, y=0, w=CANVAS_W, h=CANVAS_H) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(x, y, w, h);
+  offscreenCtx.fillStyle = '#ffffff';
+  offscreenCtx.fillRect(x, y, w, h);
 }
 fillWhite();
 
@@ -326,6 +335,10 @@ function applyBrush(c, x0, y0, x1, y1, color, size, brush, vx, vy) {
   }
   c.restore();
   c.globalAlpha=1; c.imageSmoothingEnabled=true;
+  // 同步筆跡到 offscreen canvas
+  if (c === ctx) {
+    applyBrush(offscreenCtx, x0, y0, x1, y1, color, size, brush, vx, vy);
+  }
 }
 
 function onDrawStart(e) {
@@ -582,7 +595,11 @@ function pasteImageBlob(blob) {
 // ══════════════════════════════════════════════════
 // Socket 接收
 // ══════════════════════════════════════════════════
-socket.on('draw',(data)=>applyBrush(ctx,data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.brush,data.vx||0,data.vy||0));
+socket.on('draw',(data)=>{
+  applyBrush(ctx,data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.brush,data.vx||0,data.vy||0);
+  // 遠端筆跡也同步到 offscreen
+  applyBrush(offscreenCtx,data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.brush,data.vx||0,data.vy||0);
+});
 
 // 接收其他人的圖片物件同步
 socket.on('syncImageObjects', ({ objects }) => {
@@ -600,7 +617,12 @@ socket.on('syncImageObjects', ({ objects }) => {
 });
 socket.on('pasteImage',({dataURL})=>{ const img=new Image(); img.onload=()=>ctx.drawImage(img,0,0); img.src=dataURL; });
 socket.on('placeSticker',({dataURL,x,y,w,h})=>{ const img=new Image(); img.onload=()=>ctx.drawImage(img,x,y,w,h); img.src=dataURL; });
-socket.on('clearCanvas',()=>{ fillWhite(); voteToast.classList.add('hidden'); showNotif('🗑️ 畫布已清除'); });
+socket.on('clearCanvas',()=>{
+  fillWhite();
+  imageObjects = []; // 清除所有圖片物件
+  voteToast.classList.add('hidden');
+  showNotif('🗑️ 畫布已清除');
+});
 socket.on('clearVoteUpdate',({current,needed})=>{
   voteCountEl.textContent=current; voteNeededEl.textContent=needed;
   voteToast.classList.remove('hidden');
@@ -764,20 +786,23 @@ function endImageDrag() {
   if (!isDraggingImg) return;
   isDraggingImg = false;
   viewport.style.cursor = canvasMode === 'pan' ? 'grab' : 'crosshair';
-  // 廣播最新位置
   const obj = imageObjects.find(o => o.id === selectedImgId);
   if (obj) {
+    // 拖曳結束：把最終位置同步到 offscreen，讓位置固定
+    offscreenCtx.drawImage(offscreenCanvas, 0, 0); // 保持現有筆跡
+    // 重新繪製所有圖片到 offscreen（更新所有圖片最終位置）
+    imageObjects.forEach(o => offscreenCtx.drawImage(o.img, o.x, o.y, o.w, o.h));
     broadcastImageObjects();
     socket.emit('saveSnapshot', { snapshot: canvas.toDataURL('image/jpeg', .6) });
   }
   selectedImgId = null;
 }
 
-/** 重繪所有圖片（先清空再重畫） */
+/** 重繪所有圖片：從 offscreen 還原筆跡，再把圖片畫在上面 */
 function redrawAllImages() {
-  // 重繪：先把畫布內容存起來，清空，重畫筆跡快照，再畫所有圖片
-  // 簡化做法：直接在目前畫布上重畫圖片（畫在最上層）
-  // 實際場景：圖片會覆蓋在最新的畫布狀態上
+  // Step1：從 offscreen canvas 還原純筆跡（清除圖片殘影）
+  ctx.drawImage(offscreenCanvas, 0, 0);
+  // Step2：把所有圖片物件畫在筆跡上面
   imageObjects.forEach(obj => {
     ctx.drawImage(obj.img, obj.x, obj.y, obj.w, obj.h);
   });
@@ -855,7 +880,9 @@ function commitPlacingImg(pos) {
     const y = pos.y - h / 2;
     const obj = { id: Date.now() + Math.random(), src, x, y, w, h, img };
     imageObjects.push(obj);
+    // 畫到 main canvas 和 offscreen（讓圖片成為永久筆跡的一部分）
     ctx.drawImage(img, x, y, w, h);
+    offscreenCtx.drawImage(img, x, y, w, h); // offscreen 同步
     broadcastImageObjects();
     socket.emit('saveSnapshot', { snapshot: canvas.toDataURL('image/jpeg', .6) });
     showNotif('✅ 圖片已放置，可拖曳移動');
