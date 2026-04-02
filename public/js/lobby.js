@@ -46,18 +46,35 @@ function renderRoomList(list) {
     roomListEl.innerHTML = '<div class="room-hint">目前沒有公開房間，快來建立第一間！</div>';
     return;
   }
-  roomListEl.innerHTML = list.map(r => `
-    <div class="room-item ${r.isFull ? 'full' : ''}" data-code="${r.code}">
-      <div>
+  roomListEl.innerHTML = list.map(r => {
+    // 熱度指示
+    const fillPct  = Math.round((r.userCount / r.maxUsers) * 100);
+    const isHot    = fillPct >= 70;
+    const isMid    = fillPct >= 40;
+    const heatIcon = isHot ? '🔥' : isMid ? '👥' : '🌱';
+
+    // 活動指示
+    const activeText = r.activeDrawers > 0
+      ? `・${r.activeDrawers} 人正在畫`
+      : '';
+
+    return `
+    <div class="room-item ${r.isFull ? 'full' : ''} ${isHot ? 'hot' : ''}" data-code="${r.code}">
+      <div class="room-item-info">
         <div class="room-name">${escapeHtml(r.name)}</div>
-        <div class="room-count">${r.userCount} / ${r.maxUsers} 人${r.queueCount > 0 ? `・排隊 ${r.queueCount}` : ''}</div>
+        <div class="room-count">
+          ${heatIcon} ${r.userCount} / ${r.maxUsers} 人${activeText}${r.queueCount > 0 ? `・排隊 ${r.queueCount}` : ''}
+        </div>
+        <div class="room-bar-wrap">
+          <div class="room-bar" style="width:${fillPct}%;background:${isHot ? '#FF6B6B' : isMid ? '#FFD93D' : '#4ECDC4'}"></div>
+        </div>
       </div>
       ${r.isFull
         ? `<button class="room-full-badge">FULL</button>`
         : `<button class="room-join" data-code="${r.code}">JOIN</button>`
       }
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   roomListEl.querySelectorAll('.room-join').forEach(btn => {
     btn.addEventListener('click', (e) => {

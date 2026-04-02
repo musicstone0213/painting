@@ -56,12 +56,12 @@ app.use(express.json());
 //   createdAt: Date
 // }
 const rooms = {};
-const MAX_USERS = 100;
+const MAX_USERS = 30;
 const PERMANENT_ROOMS = ['PAINT1','PAINT2','PAINT3'];
 
 /** 建立永久預設公開房間 */
 function initPermanentRooms() {
-  const names = ['塗鴉星球 #1', '塗鴉星球 #2', '塗鴉星球 #3'];
+  const names = ['1.皮炎派對', '2.幫我顧一下便當', '3.自行車手'];
   PERMANENT_ROOMS.forEach((code, i) => {
     if (!rooms[code]) {
       rooms[code] = {
@@ -74,7 +74,8 @@ function initPermanentRooms() {
         queue: [],
         canvasSnapshot: null,
         clearVotes: new Set(),
-        createdAt: new Date()
+        createdAt: new Date(),
+        recentDrawers: new Set(),
       };
     }
   });
@@ -103,12 +104,13 @@ function generateCode() {
 
 function getRoomSummary(room) {
   return {
-    code:      room.code,
-    name:      room.name,
-    userCount: room.users.size,
-    queueCount:room.queue.length,
-    maxUsers:  room.maxUsers,
-    isFull:    room.users.size >= room.maxUsers
+    code:         room.code,
+    name:         room.name,
+    userCount:    room.users.size,
+    queueCount:   room.queue.length,
+    maxUsers:     room.maxUsers,
+    isFull:       room.users.size >= room.maxUsers,
+    activeDrawers: room.recentDrawers ? room.recentDrawers.size : 0
   };
 }
 
@@ -297,10 +299,20 @@ io.on('connection', (socket) => {
     callback({ success: true, roomCode: code, roomInfo: getRoomSummary(rooms[code]) });
   });
 
-  // ── 繪圖廣播 ────────────────────────────────────
+  // ── 繪圖廣播 + 活動追蹤 ────────────────────────
   socket.on('draw', (data) => {
-    const rc = socket.roomCode;
-    if (rc) socket.to(rc).emit('draw', data);
+    const rc   = socket.roomCode;
+    const room = rooms[rc];
+    if (!rc || !room) return;
+    socket.to(rc).emit('draw', data);
+
+    // 記錄最近畫圖的人，1 分鐘後移除
+    if (!room.recentDrawers) room.recentDrawers = new Set();
+    room.recentDrawers.add(socket.id);
+    clearTimeout(socket._drawTimer);
+    socket._drawTimer = setTimeout(() => {
+      if (room.recentDrawers) room.recentDrawers.delete(socket.id);
+    }, 60000); // 60 秒
   });
 
   // ── 圖片貼上廣播 ────────────────────────────────

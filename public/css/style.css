@@ -162,3 +162,29 @@ body::before{
   margin-top:8px;
 }
 .hidden{display:none!important;}
+
+/* ── 房間人數進度條 ── */
+.room-item-info { flex: 1; min-width: 0; }
+.room-bar-wrap {
+  height: 4px;
+  background: rgba(255,255,255,.1);
+  margin-top: 6px;
+  overflow: hidden;
+}
+.room-bar {
+  height: 100%;
+  transition: width .4s ease;
+  min-width: 4px;
+}
+.room-item.hot {
+  border-color: rgba(255,107,107,.4);
+  background: rgba(255,107,107,.08);
+}
+.room-item.hot .room-name { color: #fff; }
+.room-count {
+  font-size: 7px;
+  color: rgba(255,255,255,.45);
+  margin-top: 4px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+}
