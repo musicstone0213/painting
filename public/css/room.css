@@ -195,3 +195,35 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 .canvas-viewport.pan-mode:active {
   cursor: grabbing;
 }
+
+/* ── 表情飄動（fixed，浮在螢幕上） ── */
+.reaction-float-fixed {
+  position: fixed;
+  font-size: 2.2rem;
+  pointer-events: none;
+  z-index: 300;
+  animation: rfloat-fixed 2.5s ease-out forwards;
+}
+@keyframes rfloat-fixed {
+  0%   { transform: translateY(0) scale(1);   opacity: 1; }
+  100% { transform: translateY(-260px) scale(1.6); opacity: 0; }
+}
+
+/* ── 彈幕（fixed，從右側飛入） ── */
+.danmaku-fixed {
+  position: fixed;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Noto Sans TC', sans-serif;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  padding: 4px 12px;
+  pointer-events: none;
+  z-index: 300;
+  animation: danmaku-fixed 6s linear forwards;
+}
+@keyframes danmaku-fixed {
+  from { right: -300px; opacity: 1; }
+  to   { right: 110vw;  opacity: 0.8; }
+}

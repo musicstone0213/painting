@@ -299,6 +299,11 @@ io.on('connection', (socket) => {
     callback({ success: true, roomCode: code, roomInfo: getRoomSummary(rooms[code]) });
   });
 
+  // ── 心跳 ping ──────────────────────────────────────
+  socket.on('ping', () => {
+    socket.emit('pong'); // 回應保持連線
+  });
+
   // ── 繪圖廣播 + 活動追蹤 ────────────────────────
   socket.on('draw', (data) => {
     const rc   = socket.roomCode;
@@ -339,11 +344,14 @@ io.on('connection', (socket) => {
   // ── 儲存快照（同步寫入 Redis 永久保存） ─────────
   socket.on('saveSnapshot', ({ snapshot }) => {
     const rc = socket.roomCode;
-    if (rc && rooms[rc]) {
-      rooms[rc].canvasSnapshot = snapshot;
-      // 非同步寫入 Redis，不阻塞主流程
-      redisSet(`canvas:${rc}`, snapshot).catch(()=>{});
-    }
+    if (!rc || !rooms[rc]) return;
+    if (!snapshot || snapshot.length < 100) return; // 過濾空快照
+
+    rooms[rc].canvasSnapshot = snapshot;
+    // 非同步寫入 Redis
+    redisSet(`canvas:${rc}`, snapshot)
+      .then(() => {}) // 成功不需要 log（太頻繁）
+      .catch(e => console.error(`[Redis 寫入失敗] ${rc}:`, e.message));
   });
 
   // ── 清除畫布（純投票制，無房主） ───────────────

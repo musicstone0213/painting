@@ -11,7 +11,30 @@ sessionStorage.removeItem('canvasSnapshot');
 sessionStorage.removeItem('queued');
 sessionStorage.removeItem('queuePos');
 
-const socket = io();
+const socket = io({
+  reconnection:      true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: 10,
+  timeout: 20000
+});
+
+// 心跳：每 25 秒 ping 伺服器，防止 Render 閒置切斷
+setInterval(() => { if (socket.connected) socket.emit('ping'); }, 25000);
+
+// 重連後自動重新加入房間並載入畫布
+socket.on('reconnect', () => {
+  showNotif('🔄 重新連線中…');
+  socket.emit('joinRoom', { roomCode, nickname }, (res) => {
+    if (!res.success) return;
+    onlineCount.textContent = res.roomInfo.userCount;
+    showNotif('✅ 已重新連線');
+    if (res.canvasSnapshot) {
+      const img = new Image();
+      img.src = res.canvasSnapshot;
+      img.onload = () => { fillWhite(); ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H); };
+    }
+  });
+});
 
 // ── DOM ──────────────────────────────────────────
 const viewport         = document.getElementById('canvasViewport');
@@ -432,8 +455,9 @@ socket.on('cursorMove',({socketId,x,y,name})=>{
 });
 socket.on('chatMessage',({nickname:n,message,time})=>appendChatMsg(n,message,time));
 socket.on('reaction',({nickname:n,emoji})=>{
-  spawnReactionFloat(emoji); appendSystemMsg(`${n} ${emoji}`);
-  if (window.innerWidth<768) spawnDanmaku(`${n} ${emoji}`);
+  spawnReactionFloat(emoji);          // 所有裝置都顯示飄動表情
+  spawnDanmaku(`${n} ${emoji}`);      // 所有裝置都顯示彈幕
+  appendSystemMsg(`${n} ${emoji}`);
 });
 
 // ══════════════════════════════════════════════════
@@ -544,15 +568,24 @@ function appendSystemMsg(text){
   chatMessages.insertAdjacentHTML('beforeend',html); chatMessages.scrollTop=chatMessages.scrollHeight;
 }
 function spawnReactionFloat(emoji){
-  const el=document.createElement('div'); el.className='reaction-float'; el.textContent=emoji;
-  el.style.left=(viewport.scrollLeft+10+Math.random()*60)+'%';
-  el.style.top=(viewport.scrollTop+window.innerHeight*.6)+'px';
-  reactionLayer.appendChild(el); setTimeout(()=>el.remove(),2600);
+  // 用 fixed 定位浮在螢幕上，不受畫布捲動影響
+  const el = document.createElement('div');
+  el.className = 'reaction-float-fixed';
+  el.textContent = emoji;
+  el.style.left  = (10 + Math.random() * 75) + 'vw';
+  el.style.bottom = (60 + Math.random() * 20) + 'px'; // 從底部往上飄
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
 }
 function spawnDanmaku(text){
-  const el=document.createElement('div'); el.className='danmaku-item'; el.textContent=text;
-  el.style.top=(viewport.scrollTop+10+Math.random()*60)+'%'; el.style.right='-200px';
-  danmakuLayer.appendChild(el); setTimeout(()=>el.remove(),6200);
+  // 彈幕也用 fixed 定位，從右側飛入
+  const el = document.createElement('div');
+  el.className = 'danmaku-fixed';
+  el.textContent = text;
+  el.style.top  = (10 + Math.random() * 60) + 'vh';
+  el.style.right = '-300px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 6200);
 }
 let _nt;
 function showNotif(msg){
