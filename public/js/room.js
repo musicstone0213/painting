@@ -104,12 +104,30 @@ let isDrawing    = false;
 let lastX=0, lastY=0;
 let inQueue      = initQueued;
 let fabOpen      = false;
-let canvasMode   = 'draw'; // 'draw' | 'pan'（繪圖模式 / 移動模式）
+let canvasMode   = 'draw'; // 'draw' | 'pan'
 
-// 移動模式用的拖曳追蹤
-let isPanning    = false;
-let panStartX    = 0, panStartY    = 0;
-let panScrollX   = 0, panScrollY   = 0;
+// 移動模式拖曳
+let isPanning  = false;
+let panStartX  = 0, panStartY  = 0;
+let panScrollX = 0, panScrollY = 0;
+
+// 縮放狀態（CSS transform scale）
+let canvasScale    = 1;
+const SCALE_MIN    = 0.2;
+const SCALE_MAX    = 5;
+let pinchStartDist = 0;
+let pinchStartScale= 1;
+
+// 圖片物件系統（已放置的圖片）
+// imageObjects = [{ id, src, x, y, w, h, img }]
+let imageObjects   = [];
+let selectedImgId  = null; // 目前選中的圖片 id
+let imgDragOffX    = 0, imgDragOffY = 0;
+let isDraggingImg  = false;
+
+// 圖片放置預覽模式
+let placingImg     = null; // { src, w, h } 待放置的圖片
+let placingEl      = null; // DOM 預覽元素
 const remoteCursors = {};
 let stickerData  = { x:200, y:200, w:150, h:150, dragging:false, resizing:false, dragOffX:0, dragOffY:0 };
 
@@ -203,10 +221,7 @@ socket.on('queueAdmitted', (res) => {
 // ══════════════════════════════════════════════════
 function getPos(e) {
   const src = e.touches ? e.touches[0] : e;
-  return {
-    x: src.clientX + viewport.scrollLeft,
-    y: src.clientY + viewport.scrollTop
-  };
+  return screenToCanvas(src.clientX, src.clientY);
 }
 
 function applyBrush(c, x0, y0, x1, y1, color, size, brush, vx, vy) {
@@ -288,63 +303,130 @@ canvas.addEventListener('mousedown', (e) => {
     panStartX  = e.clientX; panStartY  = e.clientY;
     panScrollX = viewport.scrollLeft; panScrollY = viewport.scrollTop;
     canvas.style.cursor = 'grabbing';
-  } else {
-    onDrawStart(e);
+    return;
   }
+  // 圖片放置模式：點畫布確定位置
+  if (placingImg) { commitPlacingImg(getPos(e)); return; }
+  // 點到已放置圖片：開始拖曳
+  const pos = getPos(e);
+  const hit = hitTestImage(pos.x, pos.y);
+  if (hit) { startImageDrag(hit, e.clientX, e.clientY); return; }
+  onDrawStart(e);
 });
 canvas.addEventListener('mousemove', (e) => {
   if (canvasMode === 'pan' && isPanning) {
     viewport.scrollLeft = panScrollX - (e.clientX - panStartX);
     viewport.scrollTop  = panScrollY - (e.clientY - panStartY);
-  } else {
-    onDrawMove(e);
+    return;
   }
+  if (placingImg) { movePlacingPreview(e.clientX, e.clientY); return; }
+  if (isDraggingImg) { moveImageDrag(e.clientX, e.clientY); return; }
+  onDrawMove(e);
 });
 canvas.addEventListener('mouseup', (e) => {
-  if (canvasMode === 'pan') { isPanning=false; canvas.style.cursor='grab'; }
-  else onDrawEnd();
+  if (canvasMode === 'pan') { isPanning=false; canvas.style.cursor='grab'; return; }
+  if (isDraggingImg) { endImageDrag(); return; }
+  onDrawEnd();
 });
 canvas.addEventListener('mouseleave', (e) => {
-  if (canvasMode === 'pan') { isPanning=false; }
-  else onDrawEnd();
+  if (canvasMode === 'pan') { isPanning=false; return; }
+  if (isDraggingImg) { endImageDrag(); return; }
+  onDrawEnd();
 });
+
+// 桌機滾輪縮放
+viewport.addEventListener('wheel', (e) => {
+  if (!e.ctrlKey && !e.metaKey) return; // 只有 Ctrl+滾輪 才縮放
+  e.preventDefault();
+  const delta   = e.deltaY > 0 ? 0.9 : 1.1;
+  const newScale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, canvasScale * delta));
+  const cx = (e.clientX + viewport.scrollLeft) / canvasScale;
+  const cy = (e.clientY + viewport.scrollTop)  / canvasScale;
+  canvasScale = newScale;
+  applyScale();
+  viewport.scrollLeft = cx * canvasScale - e.clientX;
+  viewport.scrollTop  = cy * canvasScale - e.clientY;
+}, {passive:false});
+// 雙指距離計算
+function getTouchDist(t1, t2) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+// 雙指中心點
+function getTouchCenter(t1, t2) {
+  return {
+    x: (t1.clientX + t2.clientX) / 2,
+    y: (t1.clientY + t2.clientY) / 2
+  };
+}
+
 canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    // 雙指：縮放準備（任何模式都可以縮放）
+    onDrawEnd();
+    isPanning = false;
+    pinchStartDist  = getTouchDist(e.touches[0], e.touches[1]);
+    pinchStartScale = canvasScale;
+    e.preventDefault();
+    return;
+  }
   if (canvasMode === 'pan') {
-    // 移動模式：記錄起始位置
     isPanning = true;
     const t = e.touches[0];
-    panStartX  = t.clientX;
-    panStartY  = t.clientY;
-    panScrollX = viewport.scrollLeft;
-    panScrollY = viewport.scrollTop;
+    panStartX  = t.clientX; panStartY  = t.clientY;
+    panScrollX = viewport.scrollLeft; panScrollY = viewport.scrollTop;
     e.preventDefault();
   } else {
-    if (e.touches.length === 1) onDrawStart(e);
-    else onDrawEnd();
+    if (e.touches.length === 1) {
+      // 圖片放置模式
+      if (placingImg) { handlePlacingTap(e); return; }
+      // 點到已放置圖片
+      const pos = getPos(e);
+      const hit = hitTestImage(pos.x, pos.y);
+      if (hit) { startImageDrag(hit, e.touches[0].clientX, e.touches[0].clientY); return; }
+      onDrawStart(e);
+    }
   }
 }, {passive:false});
 
 canvas.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2) {
+    // 雙指縮放
+    const dist   = getTouchDist(e.touches[0], e.touches[1]);
+    const center = getTouchCenter(e.touches[0], e.touches[1]);
+    const ratio  = dist / pinchStartDist;
+    const newScale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, pinchStartScale * ratio));
+
+    // 以雙指中心為縮放基準點
+    const cx = (center.x + viewport.scrollLeft) / canvasScale;
+    const cy = (center.y + viewport.scrollTop)  / canvasScale;
+    canvasScale = newScale;
+    applyScale();
+    viewport.scrollLeft = cx * canvasScale - center.x;
+    viewport.scrollTop  = cy * canvasScale - center.y;
+    e.preventDefault();
+    return;
+  }
   if (canvasMode === 'pan' && isPanning) {
-    // 移動模式：拖動畫布
     const t = e.touches[0];
-    const dx = t.clientX - panStartX;
-    const dy = t.clientY - panStartY;
-    viewport.scrollLeft = panScrollX - dx;
-    viewport.scrollTop  = panScrollY - dy;
+    viewport.scrollLeft = panScrollX - (t.clientX - panStartX);
+    viewport.scrollTop  = panScrollY - (t.clientY - panStartY);
     e.preventDefault();
   } else if (canvasMode === 'draw') {
-    if (e.touches.length === 1) onDrawMove(e);
+    if (e.touches.length === 1) {
+      if (isDraggingImg) { moveImageDrag(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); return; }
+      if (placingImg) { movePlacingPreview(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); return; }
+      onDrawMove(e);
+    }
     e.preventDefault();
   }
 }, {passive:false});
 
 canvas.addEventListener('touchend', (e) => {
-  if (canvasMode === 'pan') {
-    isPanning = false;
-  } else {
-    if (e.touches.length === 0) onDrawEnd();
-  }
+  if (canvasMode === 'pan') { isPanning = false; return; }
+  if (isDraggingImg && e.touches.length === 0) { endImageDrag(); return; }
+  if (e.touches.length === 0) onDrawEnd();
 });
 
 // ── 貼上圖片 Ctrl+V ──────────────────────────────
@@ -388,8 +470,14 @@ function openFilePicker() {
   document.body.appendChild(input);
   input.addEventListener('change', () => {
     const file = input.files[0];
-    if (file) pasteImageBlob(file);
-    document.body.removeChild(input);
+    if (!file) { document.body.removeChild(input); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      enterPlacingMode(url, img.naturalWidth, img.naturalHeight);
+      document.body.removeChild(input);
+    };
+    img.src = url;
   });
   input.click();
 }
@@ -403,8 +491,11 @@ document.addEventListener('paste', (e) => {
   for (const item of items) {
     if (item.type.startsWith('image/')) {
       e.preventDefault();
-      pasteImageBlob(item.getAsFile());
-      showNotif('✅ 圖片已貼上！');
+      const blob = item.getAsFile();
+      const url  = URL.createObjectURL(blob);
+      const img  = new Image();
+      img.onload = () => enterPlacingMode(url, img.naturalWidth, img.naturalHeight);
+      img.src = url;
       return;
     }
   }
@@ -436,6 +527,21 @@ function pasteImageBlob(blob) {
 // Socket 接收
 // ══════════════════════════════════════════════════
 socket.on('draw',(data)=>applyBrush(ctx,data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.brush,data.vx||0,data.vy||0));
+
+// 接收其他人的圖片物件同步
+socket.on('syncImageObjects', ({ objects }) => {
+  // 清空舊的，重建
+  imageObjects = [];
+  objects.forEach(o => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = o.src;
+    img.onload = () => {
+      imageObjects.push({ ...o, img });
+      ctx.drawImage(img, o.x, o.y, o.w, o.h);
+    };
+  });
+});
 socket.on('pasteImage',({dataURL})=>{ const img=new Image(); img.onload=()=>ctx.drawImage(img,0,0); img.src=dataURL; });
 socket.on('placeSticker',({dataURL,x,y,w,h})=>{ const img=new Image(); img.onload=()=>ctx.drawImage(img,x,y,w,h); img.src=dataURL; });
 socket.on('clearCanvas',()=>{ fillWhite(); voteToast.classList.add('hidden'); showNotif('🗑️ 畫布已清除'); });
@@ -559,6 +665,159 @@ reactionBigBtns.forEach(btn=>{
 // ══════════════════════════════════════════════════
 // 工具函式
 // ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// 圖片物件系統
+// ══════════════════════════════════════════════════
+
+/** 碰撞測試：點 (x,y) 是否在某個圖片物件上 */
+function hitTestImage(x, y) {
+  // 從最後一個（最上層）往前找
+  for (let i = imageObjects.length - 1; i >= 0; i--) {
+    const obj = imageObjects[i];
+    if (x >= obj.x && x <= obj.x + obj.w &&
+        y >= obj.y && y <= obj.y + obj.h) {
+      return obj;
+    }
+  }
+  return null;
+}
+
+/** 開始拖曳已放置圖片 */
+function startImageDrag(obj, clientX, clientY) {
+  selectedImgId = obj.id;
+  isDraggingImg = true;
+  const pos = screenToCanvas(clientX, clientY);
+  imgDragOffX = pos.x - obj.x;
+  imgDragOffY = pos.y - obj.y;
+  viewport.style.cursor = 'move';
+}
+
+/** 拖曳中移動圖片 */
+function moveImageDrag(clientX, clientY) {
+  if (!isDraggingImg || !selectedImgId) return;
+  const obj = imageObjects.find(o => o.id === selectedImgId);
+  if (!obj) return;
+  const pos = screenToCanvas(clientX, clientY);
+  obj.x = pos.x - imgDragOffX;
+  obj.y = pos.y - imgDragOffY;
+  redrawAllImages();
+}
+
+/** 放開圖片 */
+function endImageDrag() {
+  if (!isDraggingImg) return;
+  isDraggingImg = false;
+  viewport.style.cursor = canvasMode === 'pan' ? 'grab' : 'crosshair';
+  // 廣播最新位置
+  const obj = imageObjects.find(o => o.id === selectedImgId);
+  if (obj) {
+    broadcastImageObjects();
+    socket.emit('saveSnapshot', { snapshot: canvas.toDataURL('image/jpeg', .6) });
+  }
+  selectedImgId = null;
+}
+
+/** 重繪所有圖片（先清空再重畫） */
+function redrawAllImages() {
+  // 重繪：先把畫布內容存起來，清空，重畫筆跡快照，再畫所有圖片
+  // 簡化做法：直接在目前畫布上重畫圖片（畫在最上層）
+  // 實際場景：圖片會覆蓋在最新的畫布狀態上
+  imageObjects.forEach(obj => {
+    ctx.drawImage(obj.img, obj.x, obj.y, obj.w, obj.h);
+  });
+}
+
+/** 廣播所有圖片物件位置給其他人 */
+function broadcastImageObjects() {
+  const data = imageObjects.map(o => ({
+    id: o.id, src: o.src, x: o.x, y: o.y, w: o.w, h: o.h
+  }));
+  socket.emit('syncImageObjects', { objects: data });
+}
+
+// ── 圖片放置預覽模式 ──────────────────────────────
+
+/** 進入放置預覽模式：圖片跟著游標走 */
+function enterPlacingMode(src, naturalW, naturalH) {
+  // 預設大小：畫面寬度的 30%，保持比例
+  const maxW = window.innerWidth * 0.3 / canvasScale;
+  const ratio = naturalH / naturalW;
+  const w = Math.min(maxW, naturalW);
+  const h = w * ratio;
+
+  placingImg = { src, w, h };
+
+  // 建立跟隨游標的預覽 DOM
+  placingEl = document.createElement('div');
+  placingEl.style.cssText = `
+    position:fixed; pointer-events:none; z-index:500;
+    border: 2px dashed #FFD93D; opacity:0.8;
+    width:${w * canvasScale}px; height:${h * canvasScale}px;
+    transform:translate(-50%,-50%);
+  `;
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+  placingEl.appendChild(img);
+  document.body.appendChild(placingEl);
+
+  showNotif('📍 點畫布任意位置放置圖片');
+  viewport.style.cursor = 'copy';
+}
+
+/** 移動放置預覽 */
+function movePlacingPreview(clientX, clientY) {
+  if (!placingEl) return;
+  placingEl.style.left = clientX + 'px';
+  placingEl.style.top  = clientY + 'px';
+}
+
+/** 手機點擊放置 */
+function handlePlacingTap(e) {
+  const t = e.touches[0];
+  const pos = screenToCanvas(t.clientX, t.clientY);
+  commitPlacingImg(pos);
+}
+
+/** 確認放置圖片到畫布上 */
+function commitPlacingImg(pos) {
+  if (!placingImg) return;
+
+  // 移除預覽
+  if (placingEl) { placingEl.remove(); placingEl = null; }
+
+  const { src, w, h } = placingImg;
+  placingImg = null;
+  viewport.style.cursor = 'crosshair';
+
+  // 建立圖片物件
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = src;
+  img.onload = () => {
+    const x = pos.x - w / 2;
+    const y = pos.y - h / 2;
+    const obj = { id: Date.now() + Math.random(), src, x, y, w, h, img };
+    imageObjects.push(obj);
+    ctx.drawImage(img, x, y, w, h);
+    broadcastImageObjects();
+    socket.emit('saveSnapshot', { snapshot: canvas.toDataURL('image/jpeg', .6) });
+    showNotif('✅ 圖片已放置，可拖曳移動');
+  };
+}
+
+/** 取消放置 */
+function cancelPlacingImg() {
+  if (placingEl) { placingEl.remove(); placingEl = null; }
+  placingImg = null;
+  viewport.style.cursor = 'crosshair';
+}
+
+// ESC 取消放置
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cancelPlacingImg();
+});
+
 function appendChatMsg(name,message,time){
   const html=`<div class="chat-msg"><div><span class="chat-msg-name" style="color:${nameToColor(name)}">${escapeHtml(name)}</span><span class="chat-msg-time">${time}</span></div><div class="chat-msg-text">${escapeHtml(message)}</div></div>`;
   chatMessages.insertAdjacentHTML('beforeend',html); chatMessages.scrollTop=chatMessages.scrollHeight;

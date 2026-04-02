@@ -338,6 +338,12 @@ io.on('connection', (socket) => {
     if (rc) socket.to(rc).emit('pasteImage', { dataURL });
   });
 
+  // ── 圖片物件同步廣播 ─────────────────────────────
+  socket.on('syncImageObjects', ({ objects }) => {
+    const rc = socket.roomCode;
+    if (rc) socket.to(rc).emit('syncImageObjects', { objects });
+  });
+
   // ── 貼圖放置廣播（確認後同步給所有人） ─────────
   socket.on('placeSticker', ({ dataURL, x, y, w, h }) => {
     const rc = socket.roomCode;
