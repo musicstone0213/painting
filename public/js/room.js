@@ -180,6 +180,9 @@ function expandCanvasIfNeeded(x, y) {
   ctx.drawImage(tmp, 0, 0);
 }
 
+// 初始化縮放
+applyScale();
+
 // 捲動到畫布中央
 viewport.scrollLeft = (CANVAS_W - window.innerWidth)  / 2;
 viewport.scrollTop  = (CANVAS_H - window.innerHeight) / 2;
@@ -846,6 +849,23 @@ function spawnDanmaku(text){
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 6200);
 }
+// ── 手機鍵盤彈出時動態調整聊天面板位置 ──────────
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    const keyboardH = window.innerHeight - window.visualViewport.height;
+    const panels = document.querySelectorAll('.float-panel');
+    panels.forEach(p => {
+      if (keyboardH > 100) {
+        // 鍵盤彈出：面板往上移
+        p.style.bottom = (keyboardH + 8) + 'px';
+      } else {
+        // 鍵盤收起：恢復原位
+        p.style.bottom = '';
+      }
+    });
+  });
+}
+
 let _nt;
 function showNotif(msg){
   notifToast.textContent=msg; notifToast.classList.remove('hidden');

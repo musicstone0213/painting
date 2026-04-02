@@ -18,6 +18,10 @@ const roomCodeInput   = document.getElementById('roomCodeInput');
 const joinBtn         = document.getElementById('joinBtn');
 const errorMsg        = document.getElementById('errorMsg');
 
+// ── 自動填入上次的暱稱 ───────────────────────────────
+const savedNick = localStorage.getItem('painting_nickname');
+if (savedNick) nicknameInput.value = savedNick;
+
 // ── 工具 ──────────────────────────────────────────
 function showError(msg) {
   errorMsg.textContent = msg;

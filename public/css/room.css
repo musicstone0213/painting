@@ -227,3 +227,27 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
   from { right: -300px; opacity: 1; }
   to   { right: 110vw;  opacity: 0.8; }
 }
+
+/* ── 手機鍵盤彈出時聊天面板上移 ── */
+@media (max-width: 767px) {
+  .float-panel {
+    /* 鍵盤彈出時面板跟著上移，不被蓋住 */
+    bottom: env(keyboard-inset-height, calc(var(--drawer-peek) + 8px));
+    max-height: 50vh;
+  }
+  /* 聊天輸入行固定在面板底部 */
+  .chat-input-row {
+    position: sticky;
+    bottom: 0;
+    background: var(--navy2);
+    z-index: 1;
+  }
+}
+
+/* iOS Safari：輸入框 focus 時整體位置調整 */
+@supports (-webkit-touch-callout: none) {
+  .float-panel {
+    /* iOS 上用 fixed + 動態 bottom */
+    bottom: calc(var(--drawer-peek) + 8px);
+  }
+}
