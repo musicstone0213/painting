@@ -51,7 +51,10 @@ const path    = require('path');
 
 const app    = express();
 const server = http.createServer(app);
-const io     = new Server(server, { cors: { origin: '*' } });
+const io     = new Server(server, {
+  cors: { origin: '*' },
+  maxHttpBufferSize: 10 * 1024 * 1024  // 10MB，支援大圖片 base64
+});
 const PORT   = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, 'public')));

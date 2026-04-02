@@ -578,7 +578,19 @@ function openFilePicker() {
       const dataURL = e.target.result;
       const img = new Image();
       img.onload = () => {
-        enterPlacingMode(dataURL, img.naturalWidth, img.naturalHeight);
+        // 壓縮圖片到最大 800px，減少傳輸大小
+        const maxSize = 800;
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > maxSize || h > maxSize) {
+          const ratio = Math.min(maxSize/w, maxSize/h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const tmpC = document.createElement('canvas');
+        tmpC.width = w; tmpC.height = h;
+        tmpC.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = tmpC.toDataURL('image/jpeg', 0.75); // JPEG 壓縮
+        enterPlacingMode(compressed, w, h);
         document.body.removeChild(input);
       };
       img.src = dataURL;
@@ -602,7 +614,19 @@ document.addEventListener('paste', (e) => {
       reader.onload = (ev) => {
         const dataURL = ev.target.result;
         const img = new Image();
-        img.onload = () => enterPlacingMode(dataURL, img.naturalWidth, img.naturalHeight);
+        img.onload = () => {
+          const maxSize = 800;
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > maxSize || h > maxSize) {
+            const ratio = Math.min(maxSize/w, maxSize/h);
+            w = Math.round(w * ratio); h = Math.round(h * ratio);
+          }
+          const tmpC = document.createElement('canvas');
+          tmpC.width = w; tmpC.height = h;
+          tmpC.getContext('2d').drawImage(img, 0, 0, w, h);
+          const compressed = tmpC.toDataURL('image/jpeg', 0.75);
+          enterPlacingMode(compressed, w, h);
+        };
         img.src = dataURL;
       };
       reader.readAsDataURL(blob);
@@ -955,9 +979,8 @@ function commitPlacingImg(pos) {
   placingImg = null;
   viewport.style.cursor = 'crosshair';
 
-  // 建立圖片物件
+  // 建立圖片物件（base64 不需要 crossOrigin）
   const img = new Image();
-  img.crossOrigin = 'anonymous';
   img.src = src;
   img.onload = () => {
     const x = pos.x - w / 2;
