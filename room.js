@@ -1,197 +1,149 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --red:#C8102E;--red2:#7a0000;--yellow:#FFD93D;
-  --navy:#0d0d1a;--navy2:#1a1a2e;
-  --drawer-peek:36px; /* 收起時露出的高度 */
-  --drawer-open:130px;
-}
-html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;background:#fff;touch-action:none;}
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Painting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
 
-/* ══ CANVAS VIEWPORT ═══════════════════════ */
-.canvas-viewport{
-  position:fixed;inset:0;
-  overflow:scroll;
-  cursor:crosshair;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-x pan-y; /* 允許雙指捲動 */
-}
-.canvas-viewport.eraser-mode{cursor:cell;}
-.canvas-viewport.sticker-mode{cursor:copy;}
-#mainCanvas{display:block;background:#fff;touch-action:none;}
-.cursor-layer,.reaction-layer,.danmaku-layer{position:absolute;top:0;left:0;pointer-events:none;}
-.remote-cursor{position:absolute;transform:translate(-50%,-50%);background:var(--red);color:#fff;font-size:9px;padding:2px 7px;white-space:nowrap;pointer-events:none;}
+  <div class="wrap">
+    <div class="inner">
 
-/* ── 彈幕 ── */
-.danmaku-item{position:absolute;white-space:nowrap;font-size:13px;font-weight:700;background:rgba(0,0,0,.55);color:#fff;padding:3px 10px;animation:dfly 6s linear forwards;}
-@keyframes dfly{from{right:-200px;}to{right:110%;}}
+      <!-- PIXEL LOGO -->
+      <div class="logo-wrap">
+        <svg width="300" height="90" viewBox="0 0 300 90" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated;max-width:100%;">
+          <!-- P -->
+          <rect x="0"  y="0"  width="6" height="56" fill="#fff"/>
+          <rect x="6"  y="0"  width="20" height="6" fill="#fff"/>
+          <rect x="26" y="6"  width="6" height="6"  fill="#fff"/>
+          <rect x="26" y="12" width="6" height="8"  fill="#fff"/>
+          <rect x="26" y="20" width="6" height="4"  fill="#fff"/>
+          <rect x="6"  y="24" width="20" height="6" fill="#fff"/>
+          <rect x="3"  y="3"  width="6" height="56" fill="#7a0000" opacity=".55"/>
+          <!-- A -->
+          <rect x="38" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="64" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="44" y="0"  width="20" height="6"  fill="#fff"/>
+          <rect x="44" y="26" width="20" height="6"  fill="#fff"/>
+          <rect x="41" y="3"  width="6"  height="56" fill="#7a0000" opacity=".55"/>
+          <rect x="67" y="3"  width="6"  height="56" fill="#7a0000" opacity=".55"/>
+          <!-- I -->
+          <rect x="76" y="0"  width="20" height="6"  fill="#fff"/>
+          <rect x="82" y="6"  width="6"  height="44" fill="#fff"/>
+          <rect x="76" y="50" width="20" height="6"  fill="#fff"/>
+          <rect x="79" y="3"  width="6"  height="50" fill="#7a0000" opacity=".55"/>
+          <!-- N -->
+          <rect x="102" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="126" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="108" y="6"  width="6"  height="8"  fill="#fff"/>
+          <rect x="114" y="14" width="6"  height="8"  fill="#fff"/>
+          <rect x="120" y="22" width="6"  height="8"  fill="#fff"/>
+          <rect x="105" y="3"  width="6"  height="56" fill="#7a0000" opacity=".55"/>
+          <!-- T -->
+          <rect x="136" y="0"  width="32" height="6" fill="#fff"/>
+          <rect x="150" y="6"  width="6"  height="50" fill="#fff"/>
+          <rect x="153" y="3"  width="6"  height="52" fill="#7a0000" opacity=".55"/>
+          <!-- I2 -->
+          <rect x="174" y="0"  width="20" height="6"  fill="#fff"/>
+          <rect x="180" y="6"  width="6"  height="44" fill="#fff"/>
+          <rect x="174" y="50" width="20" height="6"  fill="#fff"/>
+          <!-- N2 -->
+          <rect x="200" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="224" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="206" y="6"  width="6"  height="8"  fill="#fff"/>
+          <rect x="212" y="14" width="6"  height="8"  fill="#fff"/>
+          <rect x="218" y="22" width="6"  height="8"  fill="#fff"/>
+          <!-- G -->
+          <rect x="236" y="6"  width="26" height="6"  fill="#fff"/>
+          <rect x="236" y="6"  width="6"  height="44" fill="#fff"/>
+          <rect x="236" y="50" width="26" height="6"  fill="#fff"/>
+          <rect x="256" y="30" width="6"  height="26" fill="#fff"/>
+          <rect x="244" y="30" width="12" height="6"  fill="#fff"/>
+          <rect x="239" y="9"  width="6"  height="44" fill="#7a0000" opacity=".55"/>
+          <!-- 筆觸裝飾 -->
+          <rect x="0"   y="66" width="300" height="2" fill="rgba(255,255,255,.15)"/>
+          <rect x="0"   y="70" width="48"  height="4" fill="rgba(255,255,255,.65)"/>
+          <rect x="52"  y="70" width="22"  height="4" fill="rgba(255,255,255,.35)"/>
+          <rect x="78"  y="70" width="70"  height="4" fill="rgba(255,255,255,.55)"/>
+          <rect x="152" y="70" width="34"  height="4" fill="rgba(255,255,255,.25)"/>
+          <rect x="190" y="70" width="60"  height="4" fill="rgba(255,255,255,.5)"/>
+          <rect x="254" y="70" width="46"  height="4" fill="rgba(255,255,255,.3)"/>
+          <text x="0" y="86" font-family="'Press Start 2P',monospace" font-size="6" fill="rgba(255,255,255,.45)" letter-spacing="5">DRAW . CHAOS . REPEAT</text>
+        </svg>
+      </div>
 
-/* ── 表情飄動 ── */
-.reaction-float{position:absolute;bottom:15%;font-size:2rem;animation:rfloat 2.5s ease-out forwards;pointer-events:none;}
-@keyframes rfloat{0%{transform:translateY(0) scale(1);opacity:1;}100%{transform:translateY(-280px) scale(1.5);opacity:0;}}
+      <div class="tagline">跟陌生人一起惡搞塗鴉</div>
 
-/* ── 貼圖預覽 ── */
-.sticker-preview{position:absolute;border:2px dashed var(--yellow);cursor:move;user-select:none;}
-.sticker-preview img{width:100%;height:100%;object-fit:contain;pointer-events:none;display:block;}
-.sticker-handle{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;background:var(--yellow);cursor:se-resize;border:2px solid #fff;}
-.sticker-actions{position:absolute;top:-42px;left:0;display:flex;gap:6px;}
-.sticker-confirm{background:var(--yellow);border:none;color:var(--navy);font-family:'Press Start 2P',monospace;font-size:9px;padding:6px 12px;cursor:pointer;}
-.sticker-cancel{background:var(--red);border:none;color:#fff;font-family:'Press Start 2P',monospace;font-size:9px;padding:6px 12px;cursor:pointer;}
+      <!-- 暱稱 -->
+      <div class="nick-block">
+        <span class="nick-label">YOUR NAME / 你的代號</span>
+        <input type="text" id="nicknameInput" class="nick-input" placeholder="輸入暱稱…" maxlength="12" autocomplete="off"/>
+      </div>
 
-/* ══ TOP HUD ════════════════════════════════ */
-.top-hud{
-  position:fixed;top:12px;left:12px;right:12px;
-  display:flex;align-items:center;justify-content:space-between;
-  z-index:50;pointer-events:none;gap:8px;
-}
-.hud-left,.hud-right{display:flex;align-items:center;gap:8px;pointer-events:all;}
-.hud-btn{background:rgba(200,16,46,.92);border:none;border-bottom:3px solid var(--red2);color:#fff;width:42px;height:42px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;}
-.hud-code-box{background:rgba(0,0,0,.65);padding:8px 12px;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,221,61,.25);}
-.hud-code-label{font-size:7px;color:rgba(255,221,61,.45);}
-.hud-code{font-size:9px;color:var(--yellow);letter-spacing:2px;}
-.hud-copy{background:none;border:none;cursor:pointer;font-size:12px;opacity:.6;padding:0;transition:opacity .15s;}
-.hud-copy:hover{opacity:1;}
-.hud-online{background:rgba(0,0,0,.65);padding:8px 12px;display:flex;align-items:center;gap:6px;font-size:9px;color:#4cff91;border:1px solid rgba(76,255,145,.2);}
-.hud-dot{width:7px;height:7px;background:#4cff91;flex-shrink:0;animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+      <!-- 快速加入 -->
+      <button class="btn-quick" id="quickJoinBtn">
+        <div class="bql">
+          <span class="bqicon">⚡</span>
+          <span>
+            <span class="bqt">QUICK JOIN</span>
+            <span class="bqs">隨機加入公開房間</span>
+          </span>
+        </div>
+        <div class="bqr">▶</div>
+      </button>
 
-/* ══ FAB ════════════════════════════════════ */
-.fab-container{
-  position:fixed;
-  right:16px;
-  bottom:calc(var(--drawer-peek) + 16px);
-  z-index:200; /* 確保浮在所有元素上 */
-  display:flex;flex-direction:column;align-items:flex-end;gap:8px;
-  pointer-events:none; /* 讓子元素自行處理點擊 */
-}
-.fab-container > *{pointer-events:all;}
-.fab-main{width:56px;height:56px;background:var(--red);border:none;border-bottom:4px solid var(--red2);color:#fff;font-size:20px;cursor:pointer;box-shadow:3px 3px 0 var(--red2);transition:transform .15s;}
-.fab-main:active{transform:scale(.92);}
-.fab-menu{display:flex;flex-direction:column;gap:6px;align-items:flex-end;transition:opacity .2s,transform .2s;}
-.fab-menu.hidden{opacity:0;pointer-events:none;transform:translateY(10px);}
-.fab-item{background:rgba(13,13,26,.9);border:1px solid rgba(255,221,61,.3);color:var(--yellow);font-size:9px;padding:10px 14px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:10px;font-family:'Press Start 2P',monospace;transition:background .15s;}
-.fab-item:hover{background:rgba(200,16,46,.7);}
-.fab-item-icon{font-size:16px;}
+      <!-- 公開房間列表 -->
+      <div class="sh">
+        <span class="st">OPEN ROOMS</span>
+        <button class="rb" id="refreshBtn">↺</button>
+      </div>
 
-/* ══ DRAWER ══════════════════════════════════ */
-.drawer{
-  position:fixed;bottom:0;left:0;right:0;
-  background:var(--navy2);
-  border-top:2px solid var(--yellow);
-  z-index:100;
-  transform:translateY(calc(100% - var(--drawer-peek)));
-  transition:transform .3s cubic-bezier(.4,0,.2,1);
-}
-.drawer.open{transform:translateY(0);}
-.drawer-handle{display:flex;align-items:center;justify-content:center;height:var(--drawer-peek);cursor:pointer;gap:8px;}
-.drawer-bar{width:40px;height:3px;background:rgba(255,221,61,.5);}
-.drawer-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;}
-.tool-row{display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:2px;}
-.color-row{gap:6px;}
-.color-picker{
-  width:34px;height:34px;
-  border:2px solid var(--yellow);
-  cursor:pointer;padding:2px;
-  background:#1A1A2E;flex-shrink:0;
-  -webkit-appearance:none;
-  border-radius:0;
-}
-.color-picker::-webkit-color-swatch-wrapper{padding:0;border-radius:0;}
-.color-picker::-webkit-color-swatch{border:none;border-radius:0;}
-.swatches{display:flex;gap:5px;flex-shrink:0;}
-.swatch{
-  width:30px;height:30px;
-  border:2px solid rgba(255,255,255,.25);
-  cursor:pointer;flex-shrink:0;
-  transition:transform .15s,border-color .15s;
-  display:block; /* 確保不繼承奇怪的 display */
-  appearance:none;
-  -webkit-appearance:none;
-}
-.swatch.active{border-color:#fff;transform:scale(1.2);box-shadow:0 0 0 2px rgba(255,255,255,.3);}
-.paste-btn{
-  background:rgba(255,255,255,.12);
-  border:2px solid rgba(255,255,255,.3);
-  color:#fff;width:36px;height:36px;
-  font-size:16px;
-  display:flex!important;
-  align-items:center;justify-content:center;
-  cursor:pointer;flex-shrink:0;
-  margin-left:auto;
-  -webkit-appearance:none;
-}
-.brush-group{display:flex;gap:4px;background:rgba(0,0,0,.3);border:1px solid rgba(255,221,61,.2);padding:3px;flex-shrink:0;}
-.brush-btn{background:none;border:1px solid transparent;font-size:16px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
-.brush-btn.active{background:rgba(255,221,61,.15);border-color:var(--yellow);}
-.size-group{display:flex;gap:3px;background:rgba(0,0,0,.3);border:1px solid rgba(255,221,61,.2);padding:3px;align-items:center;flex-shrink:0;margin-left:auto;}
-.size-btn{background:none;border:1px solid transparent;color:rgba(255,255,255,.4);cursor:pointer;padding:5px 8px;min-height:36px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
-.size-btn:nth-child(1){font-size:.45rem;}
-.size-btn:nth-child(2){font-size:.8rem;}
-.size-btn:nth-child(3){font-size:1.15rem;}
-.size-btn.active{background:rgba(255,221,61,.15);border-color:var(--yellow);color:var(--yellow);}
+      <div class="limit-notice">
+        <div class="limit-dot"></div>
+        <span class="limit-text">公開房間上限 3 間・MAX 3 PUBLIC ROOMS</span>
+      </div>
 
-/* ══ FLOAT PANELS ════════════════════════════ */
-.float-panel{
-  position:fixed;bottom:calc(var(--drawer-peek) + 8px);right:16px;
-  width:min(320px, calc(100vw - 32px));
-  background:var(--navy2);
-  border:2px solid var(--yellow);
-  box-shadow:4px 4px 0 var(--red2);
-  z-index:65;
-  display:flex;flex-direction:column;
-  max-height:60vh;
-}
-.float-panel.hidden{display:none!important;}
-.panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,221,61,.2);flex-shrink:0;}
-.panel-title{font-size:9px;color:var(--yellow);}
-.panel-close{background:none;border:none;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;padding:2px 6px;font-family:'Press Start 2P',monospace;}
-.panel-close:hover{color:#fff;}
+      <div class="room-list" id="roomList">
+        <div class="room-hint">載入中…</div>
+      </div>
 
-/* chat */
-.chat-messages{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:120px;max-height:200px;}
-.chat-msg{display:flex;flex-direction:column;gap:2px;}
-.chat-msg-name{font-size:8px;margin-bottom:2px;}
-.chat-msg-time{font-size:7px;color:#444;margin-left:6px;}
-.chat-msg-text{font-size:11px;color:#ccc;line-height:1.4;word-break:break-all;font-family:'Noto Sans TC',sans-serif;}
-.chat-msg.system .chat-msg-text{color:#555;font-style:italic;font-size:10px;}
-.chat-input-row{display:flex;border-top:1px solid rgba(255,221,61,.2);flex-shrink:0;}
-.chat-input{flex:1;background:#0d0d1a;border:none;color:#fff;padding:10px 12px;font-size:12px;font-family:'Noto Sans TC',sans-serif;outline:none;}
-.chat-input::placeholder{color:#333;}
-.chat-send{background:var(--yellow);border:none;color:var(--navy);width:40px;font-family:'Press Start 2P',monospace;font-size:9px;cursor:pointer;flex-shrink:0;}
+      <!-- 次要操作 -->
+      <div class="sg">
+        <button class="sb" id="toggleCreateBtn">＋ CREATE<br/>建立新房間</button>
+        <button class="sb" id="toggleJoinBtn">🔑 CODE<br/>代碼加入</button>
+      </div>
 
+      <!-- 建立房間（收起） -->
+      <div class="collapse hidden" id="createPanel">
+        <label class="nick-label">房間名稱</label>
+        <input type="text" id="roomNameInput" class="nick-input" placeholder="幫房間取個名字" maxlength="20" autocomplete="off"/>
+        <div class="toggle-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="isPublicCheck" checked/>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            公開（出現在列表）
+          </label>
+        </div>
+        <button class="sb full-btn" id="createBtn">建立房間</button>
+      </div>
 
+      <!-- 代碼加入（收起） -->
+      <div class="collapse hidden" id="joinPanel">
+        <label class="nick-label">房間代碼</label>
+        <input type="text" id="roomCodeInput" class="nick-input code-input" placeholder="輸入 6 碼代碼" maxlength="6" autocomplete="off"/>
+        <button class="sb full-btn" id="joinBtn">加入房間</button>
+      </div>
 
-/* reaction */
-.reaction-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;}
-.reaction-big-btn{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);font-size:28px;cursor:pointer;padding:14px;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .1s;}
-.reaction-big-btn:active{transform:scale(.88);}
-.reaction-big-btn:hover{background:rgba(200,16,46,.3);}
+      <div id="errorMsg" class="error-msg hidden"></div>
 
-/* ══ QUEUE / TOAST ════════════════════════════ */
-.queue-screen{position:fixed;inset:0;z-index:100;background:rgba(13,13,26,.92);display:flex;align-items:center;justify-content:center;}
-.queue-box{background:var(--navy2);border:2px solid var(--yellow);padding:36px 28px;text-align:center;max-width:300px;width:90%;box-shadow:6px 6px 0 rgba(255,221,61,.2);display:flex;flex-direction:column;gap:12px;}
-.queue-icon{font-size:2.5rem;animation:spin 2s linear infinite;}
-@keyframes spin{0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
-.queue-box h2{font-size:10px;color:var(--yellow);line-height:1.6;}
-.queue-box p{font-size:11px;color:#aaa;font-family:'Noto Sans TC',sans-serif;}
-.queue-box strong{font-size:1.4rem;color:var(--red);}
-.queue-sub{font-size:10px!important;color:#555!important;}
-.queue-leave{margin-top:8px;padding:10px 20px;background:transparent;border:2px solid var(--red);color:var(--red);font-family:'Press Start 2P',monospace;font-size:8px;cursor:pointer;transition:all .15s;}
-.queue-leave:hover{background:var(--red);color:#fff;}
-.toast{position:fixed;left:50%;transform:translateX(-50%);background:var(--navy2);border:2px solid var(--yellow);color:var(--yellow);padding:10px 20px;font-size:9px;z-index:90;white-space:nowrap;}
-.vote-toast{bottom:calc(var(--drawer-peek) + 16px);}
-.notif-toast{top:70px;right:12px;left:auto;transform:none;border-color:rgba(255,221,61,.3);color:#ccc;font-size:9px;animation:slideIn .25s ease;}
-@keyframes slideIn{from{transform:translateX(20px);opacity:0;}to{transform:translateX(0);opacity:1;}}
-.hidden{display:none!important;}
+    </div>
+  </div>
 
-/* ── 移動模式樣式 ── */
-.fab-item#fabModeToggle {
-  border: 1px solid rgba(255,221,61,.3);
-  transition: border-color .2s, color .2s;
-}
-.canvas-viewport.pan-mode {
-  cursor: grab;
-}
-.canvas-viewport.pan-mode:active {
-  cursor: grabbing;
-}
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/lobby.js"></script>
+</body>
+</html>
