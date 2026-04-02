@@ -46,50 +46,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        system: `You are a meme image search assistant. Search for meme images related to the query. Return ONLY a raw JSON array of 5-8 direct image URLs (ending in .png, .jpg, .gif, or .webp). No markdown, no explanation, no code blocks. Example output: ["https://example.com/a.jpg","https://example.com/b.png"]`,
-        messages: [{ role: 'user', content: `Search meme images for: ${query}` }]
-      })
-    });
-
-    const data = await response.json();
-    console.log('[貼圖API回應]', JSON.stringify(data.content?.map(b=>b.type)));
-
-    // 取出所有 text block 合併
-    const text = (data.content || [])
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
-    console.log('[貼圖原始文字]', text.slice(0, 300));
-
-    // 嘗試從文字中抽取 JSON 陣列
-    const match = text.match(/\[.*?\]/s);
-    if (!match) {
-      console.error('[貼圖] 找不到 JSON 陣列');
-      return res.json({ urls: [] });
-    }
-
-    const urls = JSON.parse(match[0]);
-    res.json({ urls: Array.isArray(urls) ? urls : [] });
-
-  } catch(err) {
-    console.error('[貼圖搜尋失敗]', err.message);
-    res.json({ urls: [], error: err.message });
-  }
-});
-
 // ── 資料結構 ──────────────────────────────────────
 // rooms[code] = {
 //   code, name, isPublic, maxUsers,
