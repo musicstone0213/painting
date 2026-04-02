@@ -532,8 +532,6 @@ reactionBigBtns.forEach(btn=>{
   btn.addEventListener('click',()=>{ if(inQueue)return; socket.emit('reaction',{emoji:btn.dataset.emoji}); });
 });
 
- });
-
 // ══════════════════════════════════════════════════
 // 工具函式
 // ══════════════════════════════════════════════════
