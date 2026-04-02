@@ -349,12 +349,6 @@ io.on('connection', (socket) => {
     socket.to(rc).emit('syncImageObjects', { objects });
   });
 
-  // ── 貼圖放置廣播（確認後同步給所有人） ─────────
-  socket.on('placeSticker', ({ dataURL, x, y, w, h }) => {
-    const rc = socket.roomCode;
-    if (rc) socket.to(rc).emit('placeSticker', { dataURL, x, y, w, h });
-  });
-
   // ── 游標移動 ────────────────────────────────────
   socket.on('cursorMove', ({ x, y }) => {
     const rc   = socket.roomCode;

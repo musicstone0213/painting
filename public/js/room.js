@@ -235,9 +235,16 @@ function expandCanvasIfNeeded(x, y) {
   tmp.width = CANVAS_W; tmp.height = CANVAS_H;
   tmp.getContext('2d').drawImage(canvas, 0, 0);
 
+  // offscreen 也同步備份
+  const tmpOff = document.createElement('canvas');
+  tmpOff.width = CANVAS_W; tmpOff.height = CANVAS_H;
+  tmpOff.getContext('2d').drawImage(offscreenCanvas, 0, 0);
+
   CANVAS_W = newW; CANVAS_H = newH;
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
+  offscreenCanvas.width  = CANVAS_W;
+  offscreenCanvas.height = CANVAS_H;
   cursorLayer.style.width    = CANVAS_W + 'px';
   cursorLayer.style.height   = CANVAS_H + 'px';
   reactionLayer.style.width  = CANVAS_W + 'px';
@@ -247,6 +254,7 @@ function expandCanvasIfNeeded(x, y) {
 
   fillWhite();
   ctx.drawImage(tmp, 0, 0);
+  offscreenCtx.drawImage(tmpOff, 0, 0); // offscreen 也還原
 }
 
 // 初始化縮放
@@ -563,13 +571,19 @@ function openFilePicker() {
   input.addEventListener('change', () => {
     const file = input.files[0];
     if (!file) { document.body.removeChild(input); return; }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      enterPlacingMode(url, img.naturalWidth, img.naturalHeight);
-      document.body.removeChild(input);
+
+    // 轉成 base64（其他用戶才能載入）
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataURL = e.target.result;
+      const img = new Image();
+      img.onload = () => {
+        enterPlacingMode(dataURL, img.naturalWidth, img.naturalHeight);
+        document.body.removeChild(input);
+      };
+      img.src = dataURL;
     };
-    img.src = url;
+    reader.readAsDataURL(file);
   });
   input.click();
 }
@@ -583,11 +597,15 @@ document.addEventListener('paste', (e) => {
   for (const item of items) {
     if (item.type.startsWith('image/')) {
       e.preventDefault();
-      const blob = item.getAsFile();
-      const url  = URL.createObjectURL(blob);
-      const img  = new Image();
-      img.onload = () => enterPlacingMode(url, img.naturalWidth, img.naturalHeight);
-      img.src = url;
+      const blob   = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataURL = ev.target.result;
+        const img = new Image();
+        img.onload = () => enterPlacingMode(dataURL, img.naturalWidth, img.naturalHeight);
+        img.src = dataURL;
+      };
+      reader.readAsDataURL(blob);
       return;
     }
   }
@@ -626,24 +644,40 @@ socket.on('draw',(data)=>{
 
 // 接收其他人的圖片物件同步
 socket.on('syncImageObjects', ({ objects }) => {
+  // base64 圖片不需要 crossOrigin
   imageObjects = [];
+  if (objects.length === 0) { compositeAll(); return; }
   let loaded = 0;
-  if (objects.length === 0) return;
   objects.forEach(o => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => {
       imageObjects.push({ ...o, img });
       loaded++;
-      // 全部載入完才重組，避免閃爍
       if (loaded === objects.length) compositeAll();
     };
-    img.onerror = () => { loaded++; }; // 載入失敗跳過
-    img.src = o.src;
+    img.onerror = () => {
+      loaded++;
+      if (loaded === objects.length) compositeAll();
+    };
+    img.src = o.src; // base64 dataURL，任何人都能載入
   });
 });
-socket.on('pasteImage',({dataURL})=>{ const img=new Image(); img.onload=()=>ctx.drawImage(img,0,0); img.src=dataURL; });
-socket.on('placeSticker',({dataURL,x,y,w,h})=>{ const img=new Image(); img.onload=()=>ctx.drawImage(img,x,y,w,h); img.src=dataURL; });
+socket.on('pasteImage',({dataURL})=>{
+  const img=new Image();
+  img.onload=()=>{
+    ctx.drawImage(img,0,0);
+    offscreenCtx.drawImage(img,0,0);
+  };
+  img.src=dataURL;
+});
+socket.on('placeSticker',({dataURL,x,y,w,h})=>{
+  const img=new Image();
+  img.onload=()=>{
+    ctx.drawImage(img,x,y,w,h);
+    offscreenCtx.drawImage(img,x,y,w,h);
+  };
+  img.src=dataURL;
+});
 socket.on('clearCanvas',()=>{
   fillWhite(); // 同時清 mainCanvas 和 offscreenCanvas
   imageObjects = [];
@@ -781,27 +815,28 @@ reactionBigBtns.forEach(btn=>{
 /** 載入圖片物件陣列（從伺服器收到時使用） */
 function loadImageObjects(objects) {
   imageObjects = [];
+  if (!objects || objects.length === 0) return;
   let loaded = 0;
   objects.forEach(o => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => {
       imageObjects.push({ ...o, img });
       loaded++;
       if (loaded === objects.length) compositeAll();
     };
-    img.onerror = () => { loaded++; };
+    img.onerror = () => {
+      loaded++;
+      if (loaded === objects.length) compositeAll();
+    };
     img.src = o.src;
   });
 }
 
 /** 完整重繪 mainCanvas = 筆跡 + 所有圖片 */
 function compositeAll() {
-  // 1. 從 strokeCanvas 還原純筆跡
   ctx.drawImage(offscreenCanvas, 0, 0);
-  // 2. 把所有圖片依序畫上去
   imageObjects.forEach(obj => {
-    if (obj.img && obj.img.complete) {
+    if (obj.img && obj.img.complete && obj.img.naturalWidth > 0) {
       ctx.drawImage(obj.img, obj.x, obj.y, obj.w, obj.h);
     }
   });
