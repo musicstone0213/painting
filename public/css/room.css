@@ -14,6 +14,7 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
   overflow:scroll;
   cursor:crosshair;
   -webkit-overflow-scrolling:touch;
+  touch-action:pan-x pan-y; /* 允許雙指捲動 */
 }
 .canvas-viewport.eraser-mode{cursor:cell;}
 .canvas-viewport.sticker-mode{cursor:copy;}
