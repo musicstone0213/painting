@@ -69,9 +69,7 @@ socket.on('reconnect', () => {
         fillWhite();
         ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
         offscreenCtx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
-        if (res.imageObjects && res.imageObjects.length > 0) {
-          loadImageObjects(res.imageObjects);
-        }
+  
       };
     }
   });
@@ -162,12 +160,7 @@ const SCALE_MAX    = 5;
 let pinchStartDist = 0;
 let pinchStartScale= 1;
 
-// 圖片物件系統（已放置的圖片）
-// imageObjects = [{ id, src, x, y, w, h, img }]
-let imageObjects   = [];
-let selectedImgId  = null; // 目前選中的圖片 id
-let imgDragOffX    = 0, imgDragOffY = 0;
-let isDraggingImg  = false;
+
 
 // 圖片放置預覽模式
 let placingImg     = null; // { src, w, h } 待放置的圖片
@@ -287,10 +280,7 @@ socket.emit('joinRoom', { roomCode, nickname }, (res) => {
         ctx.drawImage(img,0,0,CANVAS_W,CANVAS_H);
         // offscreen 也同步快照（作為筆跡底層）
         offscreenCtx.drawImage(img,0,0,CANVAS_W,CANVAS_H);
-        // 載入圖片物件
-        if (res.imageObjects && res.imageObjects.length > 0) {
-          loadImageObjects(res.imageObjects);
-        }
+
       };
     }
   }
@@ -407,10 +397,6 @@ canvas.addEventListener('mousedown', (e) => {
   }
   // 圖片放置模式：點畫布確定位置
   if (placingImg) { commitPlacingImg(getPos(e)); return; }
-  // 點到已放置圖片：開始拖曳
-  const pos = getPos(e);
-  const hit = hitTestImage(pos.x, pos.y);
-  if (hit) { startImageDrag(hit, e.clientX, e.clientY); return; }
   onDrawStart(e);
 });
 canvas.addEventListener('mousemove', (e) => {
@@ -420,17 +406,14 @@ canvas.addEventListener('mousemove', (e) => {
     return;
   }
   if (placingImg) { movePlacingPreview(e.clientX, e.clientY); return; }
-  if (isDraggingImg) { moveImageDrag(e.clientX, e.clientY); return; }
   onDrawMove(e);
 });
 canvas.addEventListener('mouseup', (e) => {
   if (canvasMode === 'pan') { isPanning=false; canvas.style.cursor='grab'; return; }
-  if (isDraggingImg) { endImageDrag(); return; }
   onDrawEnd();
 });
 canvas.addEventListener('mouseleave', (e) => {
   if (canvasMode === 'pan') { isPanning=false; return; }
-  if (isDraggingImg) { endImageDrag(); return; }
   onDrawEnd();
 });
 
@@ -485,10 +468,6 @@ canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         return;
       }
-      // 點到已放置圖片
-      const pos = getPos(e);
-      const hit = hitTestImage(pos.x, pos.y);
-      if (hit) { startImageDrag(hit, e.touches[0].clientX, e.touches[0].clientY); return; }
       onDrawStart(e);
     }
   }
@@ -519,7 +498,6 @@ canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
   } else if (canvasMode === 'draw') {
     if (e.touches.length === 1) {
-      if (isDraggingImg) { moveImageDrag(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); return; }
       if (placingImg) { movePlacingPreview(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); return; }
       onDrawMove(e);
     }
@@ -529,7 +507,6 @@ canvas.addEventListener('touchmove', (e) => {
 
 canvas.addEventListener('touchend', (e) => {
   if (canvasMode === 'pan') { isPanning = false; return; }
-  if (isDraggingImg && e.touches.length === 0) { endImageDrag(); return; }
   // 放置模式：手指放開時確認放置位置
   if (placingImg && e.changedTouches.length > 0) {
     const t = e.changedTouches[0];
@@ -677,26 +654,7 @@ socket.on('draw',(data)=>{
   applyBrush(offscreenCtx,data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.brush,data.vx||0,data.vy||0);
 });
 
-// 接收其他人的圖片物件同步
-socket.on('syncImageObjects', ({ objects }) => {
-  // base64 圖片不需要 crossOrigin
-  imageObjects = [];
-  if (objects.length === 0) { compositeAll(); return; }
-  let loaded = 0;
-  objects.forEach(o => {
-    const img = new Image();
-    img.onload = () => {
-      imageObjects.push({ ...o, img });
-      loaded++;
-      if (loaded === objects.length) compositeAll();
-    };
-    img.onerror = () => {
-      loaded++;
-      if (loaded === objects.length) compositeAll();
-    };
-    img.src = o.src; // base64 dataURL，任何人都能載入
-  });
-});
+
 socket.on('pasteImage',({dataURL})=>{
   const img=new Image();
   img.onload=()=>{
@@ -847,25 +805,7 @@ reactionBigBtns.forEach(btn=>{
 //   mainCanvas    = strokeCanvas + imageObjects（每次重組）
 // ══════════════════════════════════════════════════
 
-/** 載入圖片物件陣列（從伺服器收到時使用） */
-function loadImageObjects(objects) {
-  imageObjects = [];
-  if (!objects || objects.length === 0) return;
-  let loaded = 0;
-  objects.forEach(o => {
-    const img = new Image();
-    img.onload = () => {
-      imageObjects.push({ ...o, img });
-      loaded++;
-      if (loaded === objects.length) compositeAll();
-    };
-    img.onerror = () => {
-      loaded++;
-      if (loaded === objects.length) compositeAll();
-    };
-    img.src = o.src;
-  });
-}
+
 
 /** 完整重繪 mainCanvas = 筆跡 + 所有圖片 */
 function compositeAll() {
@@ -877,60 +817,11 @@ function compositeAll() {
   });
 }
 
-/** 碰撞測試：點 (x,y) 是否在某個圖片物件上 */
-function hitTestImage(x, y) {
-  for (let i = imageObjects.length - 1; i >= 0; i--) {
-    const obj = imageObjects[i];
-    if (x >= obj.x && x <= obj.x + obj.w &&
-        y >= obj.y && y <= obj.y + obj.h) {
-      return obj;
-    }
-  }
-  return null;
-}
 
-/** 開始拖曳圖片 */
-function startImageDrag(obj, clientX, clientY) {
-  selectedImgId = obj.id;
-  isDraggingImg = true;
-  const pos = screenToCanvas(clientX, clientY);
-  imgDragOffX = pos.x - obj.x;
-  imgDragOffY = pos.y - obj.y;
-  viewport.style.cursor = 'move';
-}
 
-/** 拖曳中：更新位置並重組畫面 */
-function moveImageDrag(clientX, clientY) {
-  if (!isDraggingImg || !selectedImgId) return;
-  const obj = imageObjects.find(o => o.id === selectedImgId);
-  if (!obj) return;
-  const pos = screenToCanvas(clientX, clientY);
-  obj.x = pos.x - imgDragOffX;
-  obj.y = pos.y - imgDragOffY;
-  compositeAll(); // 重組：筆跡 + 新位置圖片
-}
+// 圖片放置後不可移動，拖曳功能已移除
 
-/** 放開圖片：廣播並存快照 */
-function endImageDrag() {
-  if (!isDraggingImg) return;
-  isDraggingImg = false;
-  viewport.style.cursor = canvasMode === 'pan' ? 'grab' : 'crosshair';
-  const obj = imageObjects.find(o => o.id === selectedImgId);
-  if (obj) {
-    compositeAll();
-    broadcastImageObjects();
-    socket.emit('saveSnapshot', { snapshot: canvas.toDataURL('image/jpeg', .6) });
-  }
-  selectedImgId = null;
-}
 
-/** 廣播所有圖片物件 */
-function broadcastImageObjects() {
-  const data = imageObjects.map(o => ({
-    id: o.id, src: o.src, x: o.x, y: o.y, w: o.w, h: o.h
-  }));
-  socket.emit('syncImageObjects', { objects: data });
-}
 
 // redrawAllImages 保留為 compositeAll 的別名
 const redrawAllImages = compositeAll;
@@ -998,19 +889,21 @@ function commitPlacingImg(pos) {
   placingImg = null;
   viewport.style.cursor = 'crosshair';
 
-  // 建立圖片物件（base64 不需要 crossOrigin）
+  // 直接畫到 canvas 和 offscreen（永久固定，不需要 imageObjects 管理）
   const img = new Image();
   img.src = src;
   img.onload = () => {
     const x = pos.x - w / 2;
     const y = pos.y - h / 2;
-    const obj = { id: Date.now() + Math.random(), src, x, y, w, h, img };
-    imageObjects.push(obj);
-    // 重組畫面（筆跡 + 所有圖片）
-    compositeAll();
-    broadcastImageObjects();
+    ctx.drawImage(img, x, y, w, h);
+    offscreenCtx.drawImage(img, x, y, w, h); // 永久固定到筆跡層
+    // 廣播給其他人（用 pasteImage 直接廣播整個位置資訊）
+    const tmp = document.createElement('canvas');
+    tmp.width = CANVAS_W; tmp.height = CANVAS_H;
+    tmp.getContext('2d').drawImage(img, x, y, w, h);
+    socket.emit('pasteImage', { dataURL: tmp.toDataURL('image/png') });
     socket.emit('saveSnapshot', { snapshot: canvas.toDataURL('image/jpeg', .6) });
-    showNotif('✅ 圖片已放置，可拖曳移動');
+    showNotif('✅ 圖片已放置');
   };
 }
 

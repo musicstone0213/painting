@@ -88,7 +88,6 @@ function initPermanentRooms() {
         users: new Map(),
         queue: [],
         canvasSnapshot: null,
-        imageObjects: [],    // 圖片物件列表
         clearVotes: new Set(),
         createdAt: new Date(),
         recentDrawers: new Set(),
@@ -247,7 +246,6 @@ io.on('connection', (socket) => {
       return callback({
         success: true, roomCode,
         canvasSnapshot:  room.canvasSnapshot,
-        imageObjects:    room.imageObjects || [],
         roomInfo: getRoomSummary(room)
       });
     }
@@ -343,14 +341,7 @@ io.on('connection', (socket) => {
     if (rc) socket.to(rc).emit('pasteImage', { dataURL });
   });
 
-  // ── 圖片物件同步廣播（同時儲存在房間裡） ─────────
-  socket.on('syncImageObjects', ({ objects }) => {
-    const rc   = socket.roomCode;
-    const room = rooms[rc];
-    if (!rc || !room) return;
-    room.imageObjects = objects; // 儲存最新圖片物件清單
-    socket.to(rc).emit('syncImageObjects', { objects });
-  });
+
 
   // ── 游標移動 ────────────────────────────────────
   socket.on('cursorMove', ({ x, y }) => {
@@ -388,7 +379,6 @@ io.on('connection', (socket) => {
 
     if (current >= needed) {
       room.canvasSnapshot = null;
-      room.imageObjects   = [];  // 清除圖片物件
       room.clearVotes.clear();
       redisSet(`canvas:${rc}`, '').catch(()=>{});
       io.to(rc).emit('clearCanvas');
