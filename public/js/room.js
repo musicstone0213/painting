@@ -479,8 +479,12 @@ canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
   } else {
     if (e.touches.length === 1) {
-      // 圖片放置模式
-      if (placingImg) { handlePlacingTap(e); return; }
+      // 圖片放置模式：touchstart 先定位預覽，touchend 才確認放置
+      if (placingImg) {
+        movePlacingPreview(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+        return;
+      }
       // 點到已放置圖片
       const pos = getPos(e);
       const hit = hitTestImage(pos.x, pos.y);
@@ -526,6 +530,13 @@ canvas.addEventListener('touchmove', (e) => {
 canvas.addEventListener('touchend', (e) => {
   if (canvasMode === 'pan') { isPanning = false; return; }
   if (isDraggingImg && e.touches.length === 0) { endImageDrag(); return; }
+  // 放置模式：手指放開時確認放置位置
+  if (placingImg && e.changedTouches.length > 0) {
+    const t = e.changedTouches[0];
+    const pos = screenToCanvas(t.clientX, t.clientY);
+    commitPlacingImg(pos);
+    return;
+  }
   if (e.touches.length === 0) onDrawEnd();
 });
 
@@ -937,20 +948,28 @@ function enterPlacingMode(src, naturalW, naturalH) {
   placingImg = { src, w, h };
 
   // 建立跟隨游標的預覽 DOM
+  // 初始位置：畫面中央
+  const initX = window.innerWidth  / 2;
+  const initY = window.innerHeight / 2;
+
   placingEl = document.createElement('div');
   placingEl.style.cssText = `
     position:fixed; pointer-events:none; z-index:500;
-    border: 2px dashed #FFD93D; opacity:0.8;
+    border: 3px dashed #FFD93D; opacity:0.85;
     width:${w * canvasScale}px; height:${h * canvasScale}px;
     transform:translate(-50%,-50%);
+    left:${initX}px; top:${initY}px;
+    box-shadow: 0 0 0 2px rgba(255,221,61,0.3);
   `;
-  const img = document.createElement('img');
-  img.src = src;
-  img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-  placingEl.appendChild(img);
+  const previewImg = document.createElement('img');
+  previewImg.src = src;
+  previewImg.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;';
+  placingEl.appendChild(previewImg);
   document.body.appendChild(placingEl);
 
-  showNotif('📍 點畫布任意位置放置圖片');
+  // 手機提示
+  const isMobile = window.innerWidth < 768;
+  showNotif(isMobile ? '👆 拖曳到想要的位置，放手即放置' : '📍 點畫布任意位置放置，ESC 取消');
   viewport.style.cursor = 'copy';
 }
 
