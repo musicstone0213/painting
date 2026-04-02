@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Painting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/room.css"/>
+</head>
+<body>
+
+  <!-- ── 畫布容器（可滑動） ── -->
+  <div id="canvasViewport" class="canvas-viewport">
+    <canvas id="mainCanvas"></canvas>
+    <div id="cursorLayer" class="cursor-layer"></div>
+    <div id="reactionLayer" class="reaction-layer"></div>
+    <div id="danmakuLayer" class="danmaku-layer"></div>
+
+    <!-- 貼圖預覽框 -->
+    <div id="stickerPreview" class="sticker-preview hidden">
+      <img id="stickerPreviewImg"/>
+      <div id="stickerHandle" class="sticker-handle"></div>
+      <div class="sticker-actions">
+        <button id="stickerConfirmBtn" class="sticker-confirm">✓</button>
+        <button id="stickerCancelBtn" class="sticker-cancel">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 頂部 HUD（浮在畫布上） ── -->
+  <header class="top-hud">
+    <div class="hud-left">
+      <button class="hud-btn" id="leaveBtn">←</button>
+      <div class="hud-code-box">
+        <span class="hud-code-label">ROOM</span>
+        <span class="hud-code" id="roomCodeDisplay">------</span>
+        <button class="hud-copy" id="copyCodeBtn">📋</button>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-online">
+        <span class="hud-dot"></span>
+        <span id="onlineCount">1</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── 右下 FAB ── -->
+  <div class="fab-container" id="fabContainer">
+    <!-- 展開選項 -->
+    <div class="fab-menu" id="fabMenu">
+      <button class="fab-item" id="fabModeToggle">
+        <span class="fab-item-icon" id="fabModeIcon">✋</span>
+        <span class="fab-item-label" id="fabModeLabel">切換：移動模式</span>
+      </button>
+      <button class="fab-item" id="fabChat">
+        <span class="fab-item-icon">💬</span>
+        <span class="fab-item-label">聊天</span>
+      </button>
+      <button class="fab-item" id="fabReaction">
+        <span class="fab-item-icon">😂</span>
+        <span class="fab-item-label">表情</span>
+      </button>
+      <button class="fab-item" id="fabClear">
+        <span class="fab-item-icon">🗑️</span>
+        <span class="fab-item-label">清除投票</span>
+      </button>
+      <button class="fab-item" id="fabUploadImg">
+        <span class="fab-item-icon">📎</span>
+        <span class="fab-item-label">插入圖片 / 摳圖</span>
+      </button>
+    </div>
+    <!-- 主按鈕 -->
+    <button class="fab-main" id="fabMain">✏️</button>
+  </div>
+
+  <!-- ── 底部抽屜工具列 ── -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-handle" id="drawerHandle">
+      <div class="drawer-bar"></div>
+    </div>
+    <div class="drawer-body">
+      <!-- 顏色列 -->
+      <div class="tool-row color-row">
+        <input type="color" id="colorPicker" class="color-picker" value="#1A1A2E"/>
+        <div class="swatches">
+          <button class="swatch active" style="background-color:#1A1A2E;" data-color="#1A1A2E"></button>
+          <button class="swatch" style="background-color:#FF6B6B;" data-color="#FF6B6B"></button>
+          <button class="swatch" style="background-color:#FFD93D;" data-color="#FFD93D"></button>
+          <button class="swatch" style="background-color:#4ECDC4;" data-color="#4ECDC4"></button>
+          <button class="swatch" style="background-color:#C77DFF;" data-color="#C77DFF"></button>
+          <button class="swatch" style="background-color:#ffffff;border-color:#888;" data-color="#ffffff"></button>
+        </div>
+      </div>
+      <!-- 畫筆列 -->
+      <div class="tool-row brush-row">
+        <div class="brush-group">
+          <button class="brush-btn active" data-brush="pen"    title="鉛筆">✏️</button>
+          <button class="brush-btn"        data-brush="ink"    title="毛筆">🖌️</button>
+          <button class="brush-btn"        data-brush="pixel"  title="像素筆">🟦</button>
+          <button class="brush-btn"        data-brush="crayon" title="蠟筆">🖍️</button>
+          <button class="brush-btn"        data-brush="marker" title="螢光筆">✨</button>
+          <button class="brush-btn"        data-brush="eraser" title="橡皮擦">🧹</button>
+        </div>
+        <div class="size-group">
+          <button class="size-btn active" data-size="4">●</button>
+          <button class="size-btn"        data-size="10">●</button>
+          <button class="size-btn"        data-size="22">●</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 聊天浮動視窗 ── -->
+  <div class="float-panel hidden" id="chatPanel">
+    <div class="panel-header">
+      <span class="panel-title">💬 CHAT</span>
+      <button class="panel-close" id="chatClose">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" class="chat-input" placeholder="說點什麼…" maxlength="200" autocomplete="off"/>
+      <button class="chat-send" id="chatSendBtn">▶</button>
+    </div>
+  </div>
+
+  <!-- ── 表情浮動視窗 ── -->
+  <div class="float-panel hidden" id="reactionPanel">
+    <div class="panel-header">
+      <span class="panel-title">表情反應</span>
+      <button class="panel-close" id="reactionPanelClose">✕</button>
+    </div>
+    <div class="reaction-grid">
+      <button class="reaction-big-btn" data-emoji="👍">👍</button>
+      <button class="reaction-big-btn" data-emoji="😂">😂</button>
+      <button class="reaction-big-btn" data-emoji="😮">😮</button>
+      <button class="reaction-big-btn" data-emoji="🔥">🔥</button>
+      <button class="reaction-big-btn" data-emoji="💀">💀</button>
+      <button class="reaction-big-btn" data-emoji="❓">❓</button>
+    </div>
+  </div>
+
+  <!-- ── 排隊畫面 ── -->
+  <div id="queueScreen" class="queue-screen hidden">
+    <div class="queue-box">
+      <div class="queue-icon">⏳</div>
+      <h2>房間已滿</h2>
+      <p>排隊第 <strong id="queuePos">?</strong> 位</p>
+      <p class="queue-sub">有人離開會自動入場</p>
+      <button class="queue-leave" onclick="window.location.href='index.html'">離開排隊</button>
+    </div>
+  </div>
+
+  <!-- ── Toasts ── -->
+  <div id="voteToast" class="toast vote-toast hidden">🗳️ 清除投票 <span id="voteCount">0</span>/<span id="voteNeeded">0</span></div>
+  <div id="notifToast" class="toast notif-toast hidden"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/room.js"></script>
+</body>
+</html>

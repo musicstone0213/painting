@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Painting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+  <div class="wrap">
+    <div class="inner">
+
+      <!-- PIXEL LOGO -->
+      <div class="logo-wrap">
+        <svg width="300" height="90" viewBox="0 0 300 90" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated;max-width:100%;">
+          <!-- P -->
+          <rect x="0"  y="0"  width="6" height="56" fill="#fff"/>
+          <rect x="6"  y="0"  width="20" height="6" fill="#fff"/>
+          <rect x="26" y="6"  width="6" height="6"  fill="#fff"/>
+          <rect x="26" y="12" width="6" height="8"  fill="#fff"/>
+          <rect x="26" y="20" width="6" height="4"  fill="#fff"/>
+          <rect x="6"  y="24" width="20" height="6" fill="#fff"/>
+          <rect x="3"  y="3"  width="6" height="56" fill="#7a0000" opacity=".55"/>
+          <!-- A -->
+          <rect x="38" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="64" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="44" y="0"  width="20" height="6"  fill="#fff"/>
+          <rect x="44" y="26" width="20" height="6"  fill="#fff"/>
+          <rect x="41" y="3"  width="6"  height="56" fill="#7a0000" opacity=".55"/>
+          <rect x="67" y="3"  width="6"  height="56" fill="#7a0000" opacity=".55"/>
+          <!-- I -->
+          <rect x="76" y="0"  width="20" height="6"  fill="#fff"/>
+          <rect x="82" y="6"  width="6"  height="44" fill="#fff"/>
+          <rect x="76" y="50" width="20" height="6"  fill="#fff"/>
+          <rect x="79" y="3"  width="6"  height="50" fill="#7a0000" opacity=".55"/>
+          <!-- N -->
+          <rect x="102" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="126" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="108" y="6"  width="6"  height="8"  fill="#fff"/>
+          <rect x="114" y="14" width="6"  height="8"  fill="#fff"/>
+          <rect x="120" y="22" width="6"  height="8"  fill="#fff"/>
+          <rect x="105" y="3"  width="6"  height="56" fill="#7a0000" opacity=".55"/>
+          <!-- T -->
+          <rect x="136" y="0"  width="32" height="6" fill="#fff"/>
+          <rect x="150" y="6"  width="6"  height="50" fill="#fff"/>
+          <rect x="153" y="3"  width="6"  height="52" fill="#7a0000" opacity=".55"/>
+          <!-- I2 -->
+          <rect x="174" y="0"  width="20" height="6"  fill="#fff"/>
+          <rect x="180" y="6"  width="6"  height="44" fill="#fff"/>
+          <rect x="174" y="50" width="20" height="6"  fill="#fff"/>
+          <!-- N2 -->
+          <rect x="200" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="224" y="0"  width="6"  height="56" fill="#fff"/>
+          <rect x="206" y="6"  width="6"  height="8"  fill="#fff"/>
+          <rect x="212" y="14" width="6"  height="8"  fill="#fff"/>
+          <rect x="218" y="22" width="6"  height="8"  fill="#fff"/>
+          <!-- G -->
+          <rect x="236" y="6"  width="26" height="6"  fill="#fff"/>
+          <rect x="236" y="6"  width="6"  height="44" fill="#fff"/>
+          <rect x="236" y="50" width="26" height="6"  fill="#fff"/>
+          <rect x="256" y="30" width="6"  height="26" fill="#fff"/>
+          <rect x="244" y="30" width="12" height="6"  fill="#fff"/>
+          <rect x="239" y="9"  width="6"  height="44" fill="#7a0000" opacity=".55"/>
+          <!-- 筆觸裝飾 -->
+          <rect x="0"   y="66" width="300" height="2" fill="rgba(255,255,255,.15)"/>
+          <rect x="0"   y="70" width="48"  height="4" fill="rgba(255,255,255,.65)"/>
+          <rect x="52"  y="70" width="22"  height="4" fill="rgba(255,255,255,.35)"/>
+          <rect x="78"  y="70" width="70"  height="4" fill="rgba(255,255,255,.55)"/>
+          <rect x="152" y="70" width="34"  height="4" fill="rgba(255,255,255,.25)"/>
+          <rect x="190" y="70" width="60"  height="4" fill="rgba(255,255,255,.5)"/>
+          <rect x="254" y="70" width="46"  height="4" fill="rgba(255,255,255,.3)"/>
+          <text x="0" y="86" font-family="'Press Start 2P',monospace" font-size="6" fill="rgba(255,255,255,.45)" letter-spacing="5">DRAW . CHAOS . REPEAT</text>
+        </svg>
+      </div>
+
+      <div class="tagline">跟陌生人一起惡搞塗鴉</div>
+
+      <!-- 暱稱 -->
+      <div class="nick-block">
+        <span class="nick-label">YOUR NAME / 你的代號</span>
+        <input type="text" id="nicknameInput" class="nick-input" placeholder="輸入暱稱…" maxlength="12" autocomplete="off"/>
+      </div>
+
+      <!-- 快速加入 -->
+      <button class="btn-quick" id="quickJoinBtn">
+        <div class="bql">
+          <span class="bqicon">⚡</span>
+          <span>
+            <span class="bqt">QUICK JOIN</span>
+            <span class="bqs">隨機加入公開房間</span>
+          </span>
+        </div>
+        <div class="bqr">▶</div>
+      </button>
+
+      <!-- 公開房間列表 -->
+      <div class="sh">
+        <span class="st">OPEN ROOMS</span>
+        <button class="rb" id="refreshBtn">↺</button>
+      </div>
+
+      <div class="limit-notice">
+        <div class="limit-dot"></div>
+        <span class="limit-text">公開房間上限 3 間・MAX 3 PUBLIC ROOMS</span>
+      </div>
+
+      <div class="room-list" id="roomList">
+        <div class="room-hint">載入中…</div>
+      </div>
+
+      <!-- 次要操作 -->
+      <div class="sg">
+        <button class="sb" id="toggleCreateBtn">＋ CREATE<br/>建立新房間</button>
+        <button class="sb" id="toggleJoinBtn">🔑 CODE<br/>代碼加入</button>
+      </div>
+
+      <!-- 建立房間（收起） -->
+      <div class="collapse hidden" id="createPanel">
+        <label class="nick-label">房間名稱</label>
+        <input type="text" id="roomNameInput" class="nick-input" placeholder="幫房間取個名字" maxlength="20" autocomplete="off"/>
+        <div class="toggle-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="isPublicCheck" checked/>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            公開（出現在列表）
+          </label>
+        </div>
+        <button class="sb full-btn" id="createBtn">建立房間</button>
+      </div>
+
+      <!-- 代碼加入（收起） -->
+      <div class="collapse hidden" id="joinPanel">
+        <label class="nick-label">房間代碼</label>
+        <input type="text" id="roomCodeInput" class="nick-input code-input" placeholder="輸入 6 碼代碼" maxlength="6" autocomplete="off"/>
+        <button class="sb full-btn" id="joinBtn">加入房間</button>
+      </div>
+
+      <div id="errorMsg" class="error-msg hidden"></div>
+
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/lobby.js"></script>
+</body>
+</html>
