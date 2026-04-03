@@ -30,6 +30,8 @@ const leaveBtn          = document.getElementById('leaveBtn');
 const copyCodeBtn       = document.getElementById('copyCodeBtn');
 const musicBtn          = document.getElementById('musicBtn');
 const colorPicker       = document.getElementById('colorPicker');
+const colorPickerBtn    = document.getElementById('colorPickerBtn');
+const colorPickerPreview= document.getElementById('colorPickerPreview');
 const swatches          = document.querySelectorAll('.swatch');
 const brushBtns         = document.querySelectorAll('.brush-btn');
 const sizeBtns          = document.querySelectorAll('.size-btn');
@@ -141,7 +143,6 @@ if (inQueue) { queueScreen.classList.remove('hidden'); queuePosEl.textContent=in
 updateModeUI();
 
 // ── 音樂 ──────────────────────────────────────────
-Music.autoplay('room');
 if (musicBtn) {
   musicBtn.addEventListener('click', ()=>{
     SFX.click();
@@ -490,7 +491,20 @@ chatClose.addEventListener('click',()=>chatPanel.classList.add('hidden'));
 reactionPanelClose.addEventListener('click',()=>reactionPanel.classList.add('hidden'));
 
 // 顏色
-colorPicker.addEventListener('input',e=>{currentColor=e.target.value;SFX.tick();});
+colorPicker.addEventListener('input',e=>{
+  currentColor=e.target.value;
+  if(colorPickerPreview) colorPickerPreview.style.background=currentColor;
+  swatches.forEach(s=>s.classList.remove('active'));
+  SFX.tick();
+  if(canvasMode==='pan'){canvasMode='draw';updateModeUI();}
+});
+if(colorPickerBtn) {
+  // 初始化預覽色塊
+  if(colorPickerPreview) colorPickerPreview.style.background=currentColor;
+  colorPickerBtn.addEventListener('click',()=>{
+    colorPicker.click(); // 觸發原生調色盤
+  });
+}
 swatches.forEach(sw=>{
   sw.addEventListener('click',()=>{
     SFX.tick();

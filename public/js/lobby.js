@@ -18,9 +18,20 @@ const roomCodeInput   = document.getElementById('roomCodeInput');
 const joinBtn         = document.getElementById('joinBtn');
 const errorMsg        = document.getElementById('errorMsg');
 
-// ── 自動填入上次的暱稱 ───────────────────────────────
+// ── 暱稱處理 ────────────────────────────────────────
+const RANDOM_NAMES = [
+  '神秘畫家','亂塗先生','藝術大師','塗鴉怪客','彩虹超人',
+  '顏料殺手','畫布霸主','抽象派大師','噴漆王子','色彩恐怖份子',
+  '橡皮擦博士','筆刷流氓','像素武士','螢光狂人','墨水俠客',
+  '暈染達人','塗白高手','亂線詩人','彩色忍者','畫錯也帥'
+];
+function getRandomName() {
+  const r = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+  return r + Math.floor(Math.random() * 99 + 1);
+}
 const savedNick = localStorage.getItem('painting_nickname');
 if (savedNick) nicknameInput.value = savedNick;
+nicknameInput.placeholder = '輸入暱稱（選填）';
 
 // ── 工具 ──────────────────────────────────────────
 function showError(msg) {
@@ -30,7 +41,7 @@ function showError(msg) {
 }
 function getNickname() {
   const n = nicknameInput.value.trim();
-  if (!n) { showError('請先輸入暱稱！'); nicknameInput.focus(); return null; }
+  if (!n) return getRandomName(); // 空白時隨機生成
   return n;
 }
 function enterRoom({ roomCode, queued, queuePos }) {

@@ -200,21 +200,27 @@ const Music = (() => {
 
     // 瀏覽器需要用戶互動才能播放，用第一次點擊啟動
     autoplay(track) {
-      const tryPlay = () => {
-        this.play(track);
-        document.removeEventListener('click',     tryPlay);
-        document.removeEventListener('touchstart', tryPlay);
-        document.removeEventListener('keydown',    tryPlay);
-      };
-      // 先嘗試直接播放
       init();
-      if (ctx.state !== 'suspended') {
+      // 先嘗試直接播放
+      const attemptPlay = () => {
+        if (ctx.state === 'suspended') ctx.resume();
         this.play(track);
-      } else {
-        // 等用戶第一次互動
-        document.addEventListener('click',     tryPlay, { once: true });
-        document.addEventListener('touchstart', tryPlay, { once: true });
-        document.addEventListener('keydown',    tryPlay, { once: true });
+      };
+      // 直接嘗試
+      attemptPlay();
+      // 若被瀏覽器擋（suspended），等第一次任何互動
+      if (!isPlaying) {
+        const onInteract = () => {
+          attemptPlay();
+          document.removeEventListener('click',     onInteract, true);
+          document.removeEventListener('touchstart', onInteract, true);
+          document.removeEventListener('keydown',    onInteract, true);
+          document.removeEventListener('scroll',     onInteract, true);
+        };
+        document.addEventListener('click',     onInteract, { once:true, capture:true });
+        document.addEventListener('touchstart', onInteract, { once:true, capture:true });
+        document.addEventListener('keydown',    onInteract, { once:true, capture:true });
+        document.addEventListener('scroll',     onInteract, { once:true, capture:true });
       }
     }
   };

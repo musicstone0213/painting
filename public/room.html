@@ -50,16 +50,25 @@
     </div>
     <div class="side-section">
       <div class="side-label">COLOR</div>
-      <div class="side-color-row">
-        <input type="color" id="colorPicker" class="color-picker" value="#1A1A2E"/>
-        <div class="swatches">
-          <button class="swatch active" style="background-color:#1A1A2E;" data-color="#1A1A2E"></button>
-          <button class="swatch" style="background-color:#FF6B6B;" data-color="#FF6B6B"></button>
-          <button class="swatch" style="background-color:#FFD93D;" data-color="#FFD93D"></button>
-          <button class="swatch" style="background-color:#4ECDC4;" data-color="#4ECDC4"></button>
-          <button class="swatch" style="background-color:#C77DFF;" data-color="#C77DFF"></button>
-          <button class="swatch" style="background-color:#ffffff;border-color:#888;" data-color="#ffffff"></button>
-        </div>
+      <!-- 調色盤：點擊按鈕觸發 hidden input -->
+      <div class="color-picker-wrap">
+        <input type="color" id="colorPicker" class="color-picker-hidden" value="#1A1A2E"/>
+        <button class="color-picker-btn" id="colorPickerBtn">
+          <span class="cpb-preview" id="colorPickerPreview"></span>
+          <span class="cpb-label">🎨 自訂顏色</span>
+          <span class="cpb-arrow">▶</span>
+        </button>
+      </div>
+      <div class="swatches">
+        <button class="swatch active" style="background-color:#1A1A2E;" data-color="#1A1A2E"></button>
+        <button class="swatch" style="background-color:#FF6B6B;" data-color="#FF6B6B"></button>
+        <button class="swatch" style="background-color:#FFD93D;" data-color="#FFD93D"></button>
+        <button class="swatch" style="background-color:#4ECDC4;" data-color="#4ECDC4"></button>
+        <button class="swatch" style="background-color:#C77DFF;" data-color="#C77DFF"></button>
+        <button class="swatch" style="background-color:#ffffff;border-color:#888;" data-color="#ffffff"></button>
+        <button class="swatch" style="background-color:#FF8C00;" data-color="#FF8C00"></button>
+        <button class="swatch" style="background-color:#00C851;" data-color="#00C851"></button>
+        <button class="swatch" style="background-color:#1A1A2E;" data-color="#000000"></button>
       </div>
     </div>
     <div class="side-section">
