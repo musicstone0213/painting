@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painting — 載入中</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      background:#C8102E;
+      min-height:100vh;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      font-family:'Press Start 2P',monospace;
+      position:relative;overflow:hidden;
+    }
+    body::before{
+      content:'';position:fixed;inset:0;
+      background-image:radial-gradient(rgba(0,0,0,.2) 1px,transparent 1px);
+      background-size:4px 4px;pointer-events:none;
+    }
+    .logo{
+      font-size:clamp(18px,5vw,32px);
+      color:#fff;
+      text-shadow:4px 4px 0 #7a0000;
+      letter-spacing:3px;
+      margin-bottom:40px;
+    }
+    .bar-wrap{
+      width:min(300px,80vw);
+      height:20px;
+      background:rgba(0,0,0,.35);
+      border:2px solid rgba(255,255,255,.3);
+      overflow:hidden;
+      margin-bottom:20px;
+    }
+    .bar-fill{
+      height:100%;
+      background:#fff;
+      width:0%;
+      animation:loading 3s ease-in-out forwards;
+      box-shadow:0 0 10px rgba(255,255,255,.5);
+    }
+    @keyframes loading{
+      0%  {width:0%;}
+      30% {width:35%;}
+      60% {width:65%;}
+      85% {width:85%;}
+      100%{width:100%;}
+    }
+    .msg{
+      font-size:8px;
+      color:rgba(255,255,255,.7);
+      letter-spacing:1px;
+      text-align:center;
+      line-height:2.5;
+      animation:blink 1.2s infinite;
+    }
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+    .sub{
+      margin-top:12px;
+      font-family:'Noto Sans TC',sans-serif;
+      font-size:12px;
+      color:rgba(255,255,255,.45);
+      text-align:center;
+      line-height:1.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">PAINTING</div>
+  <div class="bar-wrap"><div class="bar-fill"></div></div>
+  <div class="msg" id="msg">LOADING...</div>
+  <div class="sub">伺服器喚醒中，請稍候約 30 秒</div>
+
+  <script>
+    const msgs = [
+      'LOADING...',
+      'WAKING UP SERVER...',
+      'ALMOST THERE...',
+      'READY SOON...'
+    ];
+    let i = 0;
+    const el = document.getElementById('msg');
+    setInterval(() => { i = (i+1) % msgs.length; el.textContent = msgs[i]; }, 1500);
+
+    // 持續 ping 直到伺服器回應，然後跳轉
+    async function waitForServer() {
+      while (true) {
+        try {
+          const res = await fetch('/socket.io/socket.io.js', { method: 'HEAD', cache: 'no-store' });
+          if (res.ok) {
+            window.location.href = '/index.html';
+            return;
+          }
+        } catch(e) {}
+        await new Promise(r => setTimeout(r, 2000)); // 每 2 秒試一次
+      }
+    }
+    waitForServer();
+  </script>
+</body>
+</html>

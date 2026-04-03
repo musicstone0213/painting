@@ -77,6 +77,9 @@
       </div>
 
       <div class="tagline">跟陌生人一起惡搞塗鴉</div>
+      <div style="text-align:center;margin-top:-10px;margin-bottom:8px;">
+        <button id="lobbyMusicBtn" onclick="toggleLobbyMusic()" style="background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.7);font-family:'Press Start 2P',monospace;font-size:7px;padding:6px 12px;cursor:pointer;letter-spacing:1px;">♪ 音樂：開</button>
+      </div>
 
       <!-- 暱稱 -->
       <div class="nick-block">
@@ -144,6 +147,11 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="js/music.js"></script>
   <script src="js/lobby.js"></script>
+  <script>
+    // 首頁背景音樂（等用戶互動後自動播放）
+    Music.autoplay('lobby');
+  </script>
 </body>
 </html>

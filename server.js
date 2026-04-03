@@ -57,8 +57,14 @@ const io     = new Server(server, {
 });
 const PORT   = process.env.PORT || 3000;
 
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+
+// 根路徑：直接服務 index.html（loading.html 是備用）
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 
 // ── 資料結構 ──────────────────────────────────────

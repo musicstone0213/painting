@@ -169,3 +169,10 @@ joinBtn.addEventListener('click', () => {
 });
 roomCodeInput.addEventListener('input', () => { roomCodeInput.value = roomCodeInput.value.toUpperCase(); });
 roomCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') joinBtn.click(); });
+
+// ── 音樂控制 ──────────────────────────────────────
+function toggleLobbyMusic() {
+  const btn = document.getElementById('lobbyMusicBtn');
+  const on  = Music.toggle();
+  if (btn) btn.textContent = on ? '♪ 音樂：開' : '♪ 音樂：關';
+}
