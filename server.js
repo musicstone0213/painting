@@ -64,6 +64,59 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ── 後台資料 API（密碼保護） ──────────────────────
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'painting2026';
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/api/admin/stats', (req, res) => {
+  const pwd = req.query.pwd;
+  if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ error: '密碼錯誤' });
+
+  const totalOnline = Object.values(rooms).reduce((s,r) => s + r.users.size, 0);
+
+  const roomList = Object.values(rooms).map(r => ({
+    code:      r.code,
+    name:      r.name,
+    online:    r.users.size,
+    queued:    r.queue.length,
+    maxUsers:  r.maxUsers,
+    isPermanent: !!r.isPermanent,
+    isPublic:  r.isPublic,
+    users:     Array.from(r.users.values())
+  }));
+
+  // 最近 24 小時逐小時資料
+  const now   = new Date();
+  const hours = [];
+  for (let i = 23; i >= 0; i--) {
+    const d    = new Date(now - i * 3600000);
+    const key  = d.toISOString().slice(0, 13);
+    const label= `${d.getUTCHours().toString().padStart(2,'0')}:00`;
+    hours.push({ label, count: stats.hourlyJoins[key] || 0 });
+  }
+
+  // 最近 7 天資料
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d   = new Date(now - i * 86400000);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ label: key.slice(5), count: stats.dailyJoins[key] || 0 });
+  }
+
+  res.json({
+    totalOnline,
+    totalJoins:  stats.totalJoins,
+    peakOnline:  stats.peakOnline,
+    startedAt:   stats.startedAt,
+    rooms:       roomList,
+    hourly:      hours,
+    daily:       days
+  });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 
@@ -77,6 +130,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 //   createdAt: Date
 // }
 const rooms = {};
+
+// ── 統計資料 ────────────────────────────────────
+const stats = {
+  totalJoins:   0,   // 累積加入次數
+  peakOnline:   0,   // 歷史最高在線人數
+  dailyJoins:   {},  // { 'YYYY-MM-DD': count }
+  hourlyJoins:  {},  // { 'YYYY-MM-DD HH': count }
+  startedAt:    new Date().toISOString()
+};
+
+function recordJoin() {
+  stats.totalJoins++;
+  const now   = new Date();
+  const day   = now.toISOString().slice(0, 10);
+  const hour  = now.toISOString().slice(0, 13);
+  stats.dailyJoins[day]  = (stats.dailyJoins[day]  || 0) + 1;
+  stats.hourlyJoins[hour]= (stats.hourlyJoins[hour] || 0) + 1;
+  // 更新峰值
+  const total = Object.values(rooms).reduce((s,r) => s + r.users.size, 0);
+  if (total > stats.peakOnline) stats.peakOnline = total;
+  // 節流寫入 Redis
+  saveStatsToRedis();
+}
 const MAX_USERS = 30;
 const PERMANENT_ROOMS = ['PAINT1','PAINT2','PAINT3'];
 
@@ -114,6 +190,46 @@ async function loadSnapshotsFromRedis() {
   }
 }
 loadSnapshotsFromRedis();
+
+/** 從 Redis 載入統計資料 */
+async function loadStatsFromRedis() {
+  try {
+    const data = await redisGet('stats:global');
+    if (data) {
+      const saved = JSON.parse(data);
+      stats.totalJoins  = saved.totalJoins  || 0;
+      stats.peakOnline  = saved.peakOnline  || 0;
+      stats.dailyJoins  = saved.dailyJoins  || {};
+      stats.hourlyJoins = saved.hourlyJoins || {};
+      console.log(`[Redis] 載入統計：累積加入 ${stats.totalJoins} 次，峰值 ${stats.peakOnline} 人`);
+    }
+  } catch(e) { console.error('[Redis] 統計載入失敗', e.message); }
+}
+loadStatsFromRedis();
+
+/** 把統計資料存回 Redis（節流：最多每 30 秒存一次） */
+let _statsSaveTimer = null;
+function saveStatsToRedis() {
+  if (_statsSaveTimer) return;
+  _statsSaveTimer = setTimeout(async () => {
+    _statsSaveTimer = null;
+    // 只保留最近 30 天的日資料、最近 72 小時的時資料，避免資料無限膨脹
+    const now = new Date();
+    const keepDays  = new Set(Array.from({length:30}, (_,i) => new Date(now - i*86400000).toISOString().slice(0,10)));
+    const keepHours = new Set(Array.from({length:72}, (_,i) => new Date(now - i*3600000).toISOString().slice(0,13)));
+    Object.keys(stats.dailyJoins).forEach(k  => { if (!keepDays.has(k))  delete stats.dailyJoins[k];  });
+    Object.keys(stats.hourlyJoins).forEach(k => { if (!keepHours.has(k)) delete stats.hourlyJoins[k]; });
+    try {
+      await redisSet('stats:global', JSON.stringify({
+        totalJoins:  stats.totalJoins,
+        peakOnline:  stats.peakOnline,
+        dailyJoins:  stats.dailyJoins,
+        hourlyJoins: stats.hourlyJoins
+      }));
+      console.log(`[Redis] 統計已儲存：累積 ${stats.totalJoins} 次`);
+    } catch(e) { console.error('[Redis] 統計儲存失敗', e.message); }
+  }, 30000); // 30 秒後才真的寫入
+}
 
 // ── 工具 ──────────────────────────────────────────
 function generateCode() {
@@ -243,6 +359,7 @@ io.on('connection', (socket) => {
       room.users.set(socket.id, nickname);
       socket.join(roomCode);
       socket.roomCode = roomCode;
+      recordJoin(); // 記錄統計
 
       socket.to(roomCode).emit('userJoined', {
         nickname, roomInfo: getRoomSummary(room)

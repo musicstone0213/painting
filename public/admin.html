@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painting — 後台</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    :root{--red:#C8102E;--yellow:#FFD93D;--navy:#1a1a2e;--teal:#4ECDC4;}
+    body{font-family:'Press Start 2P',monospace;background:#0d0d1a;color:#fff;min-height:100vh;padding:20px;}
+    h1{font-size:13px;color:var(--yellow);margin-bottom:4px;letter-spacing:2px;}
+    .subtitle{font-size:7px;color:rgba(255,255,255,.35);margin-bottom:24px;}
+
+    /* 登入 */
+    .login-box{max-width:340px;margin:80px auto;background:var(--navy);border:2px solid var(--yellow);padding:28px;}
+    .login-box h2{font-size:10px;color:var(--yellow);margin-bottom:16px;}
+    .login-box input{width:100%;background:#0d0d1a;border:1px solid rgba(255,221,61,.3);color:#fff;padding:12px;font-size:12px;font-family:'Noto Sans TC',sans-serif;outline:none;margin-bottom:10px;}
+    .login-box button{width:100%;background:var(--red);border:none;border-bottom:3px solid #7a0000;color:#fff;padding:12px;font-family:'Press Start 2P',monospace;font-size:9px;cursor:pointer;}
+    .err{color:#FF6B6B;font-size:8px;margin-top:8px;display:none;}
+
+    /* 後台主體 */
+    .dashboard{display:none;}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:gap;}
+    .refresh-btn{background:rgba(255,221,61,.1);border:1px solid rgba(255,221,61,.3);color:var(--yellow);font-family:'Press Start 2P',monospace;font-size:7px;padding:7px 14px;cursor:pointer;}
+    .logout-btn{background:rgba(255,100,100,.1);border:1px solid rgba(255,100,100,.3);color:#FF6B6B;font-family:'Press Start 2P',monospace;font-size:7px;padding:7px 14px;cursor:pointer;}
+
+    /* 統計卡片 */
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}
+    .stat-card{background:var(--navy);border:1px solid rgba(255,221,61,.2);padding:16px;}
+    .stat-label{font-size:6px;color:rgba(255,255,255,.35);margin-bottom:8px;letter-spacing:1px;}
+    .stat-value{font-size:20px;color:var(--yellow);}
+    .stat-sub{font-size:6px;color:rgba(255,255,255,.3);margin-top:4px;font-family:'Noto Sans TC',sans-serif;}
+
+    /* 圖表 */
+    .chart-wrap{background:var(--navy);border:1px solid rgba(255,221,61,.2);padding:16px;margin-bottom:16px;}
+    .chart-title{font-size:8px;color:rgba(255,221,61,.6);margin-bottom:14px;}
+    .bar-chart{display:flex;align-items:flex-end;gap:3px;height:80px;}
+    .bar-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:3px;}
+    .bar{background:var(--red);min-height:2px;width:100%;transition:height .3s;}
+    .bar-lbl{font-size:5px;color:rgba(255,255,255,.3);writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;}
+    .bar-val{font-size:5px;color:rgba(255,221,61,.6);}
+
+    /* 房間列表 */
+    .section-title{font-size:9px;color:var(--yellow);margin-bottom:10px;margin-top:8px;}
+    .room-table{width:100%;border-collapse:collapse;font-size:7px;}
+    .room-table th{text-align:left;padding:8px 10px;color:rgba(255,221,61,.5);border-bottom:1px solid rgba(255,221,61,.15);}
+    .room-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);font-family:'Noto Sans TC',sans-serif;font-size:11px;}
+    .badge{display:inline-block;padding:2px 7px;font-size:6px;font-family:'Press Start 2P',monospace;}
+    .badge-green{background:rgba(76,255,145,.1);color:#4cff91;border:1px solid rgba(76,255,145,.3);}
+    .badge-yellow{background:rgba(255,221,61,.1);color:var(--yellow);border:1px solid rgba(255,221,61,.3);}
+    .badge-red{background:rgba(255,100,100,.1);color:#FF6B6B;border:1px solid rgba(255,100,100,.3);}
+    .user-list{font-size:9px;color:#aaa;}
+    .uptime{font-size:7px;color:rgba(255,255,255,.3);font-family:'Noto Sans TC',sans-serif;}
+
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    @media(max-width:600px){.grid2{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+
+<!-- 登入 -->
+<div class="login-box" id="loginBox">
+  <h2>🔐 後台登入</h2>
+  <input type="password" id="pwdInput" placeholder="輸入管理員密碼" autocomplete="current-password"/>
+  <button onclick="doLogin()">進入後台</button>
+  <div class="err" id="loginErr">❌ 密碼錯誤</div>
+</div>
+
+<!-- 後台主體 -->
+<div class="dashboard" id="dashboard">
+  <div class="top-bar">
+    <div>
+      <h1>📊 PAINTING 後台</h1>
+      <div class="subtitle" id="uptimeText">載入中…</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="refresh-btn" onclick="loadStats()">↺ 重新整理</button>
+      <button class="logout-btn" onclick="doLogout()">登出</button>
+    </div>
+  </div>
+
+  <!-- 統計卡片 -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">現在線上</div>
+      <div class="stat-value" id="statOnline">—</div>
+      <div class="stat-sub">位玩家正在遊戲</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">今日加入次數</div>
+      <div class="stat-value" id="statToday">—</div>
+      <div class="stat-sub">人次</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">累積加入次數</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub">自伺服器啟動</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">歷史最高在線</div>
+      <div class="stat-value" id="statPeak">—</div>
+      <div class="stat-sub">人同時在線</div>
+    </div>
+  </div>
+
+  <!-- 圖表 -->
+  <div class="grid2">
+    <div class="chart-wrap">
+      <div class="chart-title">▌ 最近 24 小時加入人次</div>
+      <div class="bar-chart" id="hourlyChart"></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">▌ 最近 7 天加入人次</div>
+      <div class="bar-chart" id="dailyChart"></div>
+    </div>
+  </div>
+
+  <!-- 房間狀態 -->
+  <div class="section-title">🏠 房間狀態</div>
+  <table class="room-table">
+    <thead>
+      <tr>
+        <th>代碼</th>
+        <th>名稱</th>
+        <th>在線</th>
+        <th>排隊</th>
+        <th>狀態</th>
+        <th>在線用戶</th>
+      </tr>
+    </thead>
+    <tbody id="roomTableBody"></tbody>
+  </table>
+</div>
+
+<script>
+let password = '';
+
+function doLogin() {
+  password = document.getElementById('pwdInput').value;
+  loadStats();
+}
+document.getElementById('pwdInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+function doLogout() {
+  password = '';
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+}
+
+async function loadStats() {
+  try {
+    const res  = await fetch(`/api/admin/stats?pwd=${encodeURIComponent(password)}`);
+    if (res.status === 401) {
+      document.getElementById('loginErr').style.display = 'block';
+      return;
+    }
+    const data = await res.json();
+    document.getElementById('loginErr').style.display = 'none';
+    document.getElementById('loginBox').style.display  = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    renderStats(data);
+  } catch(e) {
+    alert('連線失敗：' + e.message);
+  }
+}
+
+function renderStats(data) {
+  // 卡片
+  document.getElementById('statOnline').textContent = data.totalOnline;
+  document.getElementById('statTotal').textContent  = data.totalJoins;
+  document.getElementById('statPeak').textContent   = data.peakOnline;
+
+  // 今日
+  const today = new Date().toISOString().slice(5,10);
+  const todayData = data.daily.find(d => d.label === today);
+  document.getElementById('statToday').textContent = todayData ? todayData.count : 0;
+
+  // 啟動時間
+  const started = new Date(data.startedAt);
+  const mins    = Math.floor((Date.now() - started) / 60000);
+  const hrs     = Math.floor(mins / 60);
+  const uptimeStr = hrs > 0 ? `已運行 ${hrs} 小時 ${mins%60} 分` : `已運行 ${mins} 分鐘`;
+  document.getElementById('uptimeText').textContent = `伺服器啟動於 ${started.toLocaleString('zh-TW')}　${uptimeStr}`;
+
+  // 圖表
+  renderBarChart('hourlyChart', data.hourly);
+  renderBarChart('dailyChart',  data.daily);
+
+  // 房間表格
+  const tbody = document.getElementById('roomTableBody');
+  tbody.innerHTML = data.rooms.map(r => {
+    const fillPct = Math.round(r.online / r.maxUsers * 100);
+    const badge   = r.isPermanent
+      ? `<span class="badge badge-yellow">永久</span>`
+      : r.isPublic
+        ? `<span class="badge badge-green">公開</span>`
+        : `<span class="badge">私人</span>`;
+    const statusBadge = r.online === 0
+      ? `<span class="badge" style="color:#555;border-color:#333;">空</span>`
+      : fillPct >= 80
+        ? `<span class="badge badge-red">🔥 ${fillPct}%</span>`
+        : `<span class="badge badge-green">${fillPct}%</span>`;
+    const userList = r.users.length > 0
+      ? r.users.join('、')
+      : '<span style="color:#333">無</span>';
+    return `<tr>
+      <td><code>${r.code}</code></td>
+      <td>${r.name} ${badge}</td>
+      <td>${r.online} / ${r.maxUsers}</td>
+      <td>${r.queued > 0 ? `⏳ ${r.queued}` : '—'}</td>
+      <td>${statusBadge}</td>
+      <td class="user-list">${userList}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBarChart(id, data) {
+  const el  = document.getElementById(id);
+  const max = Math.max(...data.map(d => d.count), 1);
+  el.innerHTML = data.map(d => {
+    const h = Math.round((d.count / max) * 74);
+    return `<div class="bar-col">
+      <div class="bar-val">${d.count || ''}</div>
+      <div class="bar" style="height:${h}px"></div>
+      <div class="bar-lbl">${d.label}</div>
+    </div>`;
+  }).join('');
+}
+
+// 每 30 秒自動重新整理
+setInterval(() => { if (password) loadStats(); }, 30000);
+</script>
+</body>
+</html>

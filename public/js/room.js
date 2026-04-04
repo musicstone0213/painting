@@ -176,6 +176,11 @@ socket.on('reconnect', ()=>{
 socket.emit('joinRoom',{roomCode,nickname:displayNickname},(res)=>{
   if(!res.success){alert(res.error);window.location.href='index.html';return;}
   onlineCount.textContent=res.roomInfo.userCount;
+  // GA4：記錄進入房間
+  if(typeof gtag!=='undefined') {
+    gtag('event','join_room',{room_code:roomCode,user_count:res.roomInfo.userCount});
+  }
+  window._roomEnterTime = Date.now(); // 記錄進入時間
   if(res.queued){inQueue=true;queueScreen.classList.remove('hidden');queuePosEl.textContent=res.queuePos;}
   else{
     inQueue=false;queueScreen.classList.add('hidden');
@@ -518,6 +523,7 @@ brushBtns.forEach(btn=>{
   btn.addEventListener('click',()=>{
     SFX.tick();
     currentBrush=btn.dataset.brush;
+    if(typeof gtag!=='undefined') gtag('event','use_brush',{brush_type:currentBrush});
     updateBrushUI(currentBrush);
     if(canvasMode==='pan'){canvasMode='draw';updateModeUI();}
   });
@@ -528,12 +534,19 @@ function updateBrushUI(brush){
 }
 
 leaveBtn.addEventListener('click',()=>{
-  if(confirm('確定要離開房間嗎？')){Music.stop();socket.disconnect();sessionStorage.clear();window.location.href='index.html';}
+  if(confirm('確定要離開房間嗎？')){
+    // GA4：記錄停留時長
+    if(typeof gtag!=='undefined' && window._roomEnterTime) {
+      const sec = Math.round((Date.now() - window._roomEnterTime) / 1000);
+      gtag('event','leave_room',{room_code:roomCode,duration_seconds:sec});
+    }
+    Music.stop();socket.disconnect();sessionStorage.clear();window.location.href='index.html';
+  }
 });
 copyCodeBtn.addEventListener('click',()=>{SFX.click();navigator.clipboard.writeText(roomCode).then(()=>showNotif('✅ 代碼已複製'));});
 
 // 聊天
-function sendChat(inputEl){const msg=inputEl.value.trim();if(!msg||inQueue)return;SFX.send();socket.emit('chatMessage',{message:msg});inputEl.value='';}
+function sendChat(inputEl){const msg=inputEl.value.trim();if(!msg||inQueue)return;SFX.send();socket.emit('chatMessage',{message:msg});inputEl.value='';if(typeof gtag!=='undefined')gtag('event','send_chat',{room_code:roomCode});}
 chatSendBtn.addEventListener('click',()=>sendChat(chatInput));
 chatInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat(chatInput);});
 
@@ -595,6 +608,7 @@ function commitPlacingImg(pos){
     tmp.getContext('2d').drawImage(img,x,y,w,h);
     socket.emit('pasteImage',{dataURL:tmp.toDataURL('image/png')});
     socket.emit('saveSnapshot',{snapshot:canvas.toDataURL('image/jpeg',.6)});
+    if(typeof gtag!=='undefined') gtag('event','place_image',{room_code:roomCode});
     showNotif('✅ 圖片已放置');
   };
 }
