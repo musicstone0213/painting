@@ -6,7 +6,9 @@ const nickname     = sessionStorage.getItem('nickname');
 const initQueued   = sessionStorage.getItem('queued') === '1';
 const initQueuePos = parseInt(sessionStorage.getItem('queuePos') || '0');
 const initSnapshot = sessionStorage.getItem('canvasSnapshot');
-if (!roomCode || !nickname) { window.location.href = 'index.html'; }
+if (!roomCode) { window.location.href = 'index.html'; }
+// 暱稱允許隨機生成（lobby 已處理），保底用匿名
+const displayNickname = nickname || '匿名畫家';
 sessionStorage.removeItem('canvasSnapshot');
 sessionStorage.removeItem('queued');
 sessionStorage.removeItem('queuePos');
@@ -35,10 +37,6 @@ const colorPickerPreview= document.getElementById('colorPickerPreview');
 const swatches          = document.querySelectorAll('.swatch');
 const brushBtns         = document.querySelectorAll('.brush-btn');
 const sizeBtns          = document.querySelectorAll('.size-btn');
-const clearBtn          = document.getElementById('clearBtn');
-const voteToast         = document.getElementById('voteToast');
-const voteCountEl       = document.getElementById('voteCount');
-const voteNeededEl      = document.getElementById('voteNeeded');
 const notifToast        = document.getElementById('notifToast');
 const queueScreen       = document.getElementById('queueScreen');
 const queuePosEl        = document.getElementById('queuePos');
@@ -55,7 +53,6 @@ const fabMenu           = document.getElementById('fabMenu');
 const fabChat           = document.getElementById('fabChat');
 const fabReaction       = document.getElementById('fabReaction');
 const fabUploadImg      = document.getElementById('fabUploadImg');
-const fabClear2         = document.getElementById('fabClear2');
 
 // 浮動面板
 const chatPanel         = document.getElementById('chatPanel');
@@ -165,7 +162,7 @@ socket.on('reconnecting', ()=>{ setConnectionStatus('reconnecting'); showNotif('
 socket.on('reconnect_failed', ()=>{ setConnectionStatus('disconnected'); showNotif('❌ 無法連線，請重新整理'); });
 socket.on('reconnect', ()=>{
   setConnectionStatus('connected');
-  socket.emit('joinRoom',{roomCode,nickname},(res)=>{
+  socket.emit('joinRoom',{roomCode,nickname:displayNickname},(res)=>{
     if(!res.success) return;
     onlineCount.textContent=res.roomInfo.userCount;
     showNotif('✅ 已重新連線');
@@ -176,7 +173,7 @@ socket.on('reconnect', ()=>{
   });
 });
 
-socket.emit('joinRoom',{roomCode,nickname},(res)=>{
+socket.emit('joinRoom',{roomCode,nickname:displayNickname},(res)=>{
   if(!res.success){alert(res.error);window.location.href='index.html';return;}
   onlineCount.textContent=res.roomInfo.userCount;
   if(res.queued){inQueue=true;queueScreen.classList.remove('hidden');queuePosEl.textContent=res.queuePos;}
@@ -429,12 +426,7 @@ socket.on('pasteImage',({dataURL})=>{
 socket.on('placeSticker',({dataURL,x,y,w,h})=>{
   const img=new Image();img.onload=()=>{ctx.drawImage(img,x,y,w,h);offscreenCtx.drawImage(img,x,y,w,h);};img.src=dataURL;
 });
-socket.on('clearCanvas',()=>{ fillWhite(); voteToast.classList.add('hidden'); showNotif('🗑️ 畫布已清除'); });
-socket.on('clearVoteUpdate',({current,needed})=>{
-  voteCountEl.textContent=current;voteNeededEl.textContent=needed;
-  voteToast.classList.remove('hidden');
-  clearTimeout(window._vt);window._vt=setTimeout(()=>voteToast.classList.add('hidden'),6000);
-});
+socket.on('clearCanvas',()=>{ fillWhite(); showNotif('🗑️ 畫布已清除'); });
 socket.on('userJoined',({nickname:n,roomInfo})=>{onlineCount.textContent=roomInfo.userCount;appendSystemMsg(`🎨 ${n} 加入了`);showNotif(`🎨 ${n} 加入了`);});
 socket.on('userLeft',({nickname:n,roomInfo})=>{onlineCount.textContent=roomInfo.userCount;appendSystemMsg(`👋 ${n} 離開了`);showNotif(`👋 ${n} 離開了`);});
 socket.on('cursorMove',({socketId,x,y,name})=>{
@@ -479,7 +471,6 @@ function closeFab(){fabOpen=false;fabMenu.classList.add('hidden');fabMain.textCo
 
 fabChat.addEventListener('click',()=>{SFX.click();togglePanel(chatPanel);closeFab();});
 fabReaction.addEventListener('click',()=>{SFX.click();togglePanel(reactionPanel);closeFab();});
-fabClear2.addEventListener('click',()=>{SFX.click();if(inQueue)return;socket.emit('requestClear');showNotif('🗳️ 已投票清除');closeFab();});
 fabUploadImg.addEventListener('click',()=>{SFX.click();closeFab();openFilePicker();});
 
 function togglePanel(panel){
@@ -536,7 +527,6 @@ function updateBrushUI(brush){
   updateModeUI();
 }
 
-clearBtn.addEventListener('click',()=>{SFX.warn();if(inQueue)return;socket.emit('requestClear');showNotif('🗳️ 已投票清除');});
 leaveBtn.addEventListener('click',()=>{
   if(confirm('確定要離開房間嗎？')){Music.stop();socket.disconnect();sessionStorage.clear();window.location.href='index.html';}
 });

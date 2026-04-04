@@ -108,23 +108,23 @@ const Music = (() => {
   ];
 
   // ══════════════════════════════════════════════
-  // 遊戲室音樂：奇怪電子混沌風
+  // 遊戲室音樂：活潑跳躍電子風（D major BPM 160）
   // ══════════════════════════════════════════════
-  const ROOM_BPM = 128;
+  const ROOM_BPM = 160;
   const ROOM_BEAT = 60 / ROOM_BPM;
 
   const ROOM_LEAD = [
-    NOTE.A4, NOTE.REST, NOTE.C5, NOTE.B4, NOTE.REST, NOTE.A4, NOTE.G4, NOTE.REST,
-    NOTE.F4, NOTE.REST, NOTE.A4, NOTE.G4, NOTE.REST, NOTE.F4, NOTE.E4, NOTE.REST,
-    NOTE.G4, NOTE.REST, NOTE.B4, NOTE.A4, NOTE.REST, NOTE.G4, NOTE.F4, NOTE.REST,
-    NOTE.A4, NOTE.C5, NOTE.REST, NOTE.A4, NOTE.F4, NOTE.REST, NOTE.E4, NOTE.REST,
+    NOTE.D5, NOTE.REST, NOTE.F5, NOTE.D5, NOTE.A4, NOTE.REST, NOTE.B4, NOTE.REST,
+    NOTE.G4, NOTE.REST, NOTE.A4, NOTE.G4, NOTE.D4, NOTE.REST, NOTE.E4, NOTE.REST,
+    NOTE.F4, NOTE.REST, NOTE.A4, NOTE.F4, NOTE.C5, NOTE.REST, NOTE.D5, NOTE.REST,
+    NOTE.A4, NOTE.B4, NOTE.REST, NOTE.A4, NOTE.G4, NOTE.F4, NOTE.D4, NOTE.REST,
   ];
 
   const ROOM_ARP = [
-    NOTE.A3, NOTE.E4, NOTE.A4, NOTE.E4, NOTE.A3, NOTE.E4, NOTE.A4, NOTE.E4,
-    NOTE.F3, NOTE.C4, NOTE.F4, NOTE.C4, NOTE.F3, NOTE.C4, NOTE.F4, NOTE.C4,
-    NOTE.G3, NOTE.D4, NOTE.G4, NOTE.D4, NOTE.G3, NOTE.D4, NOTE.G4, NOTE.D4,
-    NOTE.A3, NOTE.E4, NOTE.A4, NOTE.E4, NOTE.C4, NOTE.G4, NOTE.E4, NOTE.REST,
+    NOTE.D3, NOTE.A3, NOTE.D4, NOTE.F4, NOTE.D3, NOTE.A3, NOTE.D4, NOTE.F4,
+    NOTE.G3, NOTE.D4, NOTE.G4, NOTE.B4, NOTE.G3, NOTE.D4, NOTE.G4, NOTE.B4,
+    NOTE.A3, NOTE.E4, NOTE.A4, NOTE.C5, NOTE.A3, NOTE.E4, NOTE.A4, NOTE.C5,
+    NOTE.D3, NOTE.F3, NOTE.A3, NOTE.D4, NOTE.F4, NOTE.A4, NOTE.D5, NOTE.REST,
   ];
 
   // ── 排程器 ──────────────────────────────────────
@@ -148,15 +148,15 @@ const Music = (() => {
         if (i % 8 === 4)             playDrum('snare', nextNoteTime, 0.25);
         if (i % 2 === 0)             playDrum('hihat', nextNoteTime, 0.2);
       } else {
-        playNote(ROOM_LEAD[i], nextNoteTime, dur, 'sawtooth', 0.15);
-        playNote(ROOM_ARP[i],  nextNoteTime, dur * 0.7, 'square', 0.10, Math.random() * 10 - 5);
-        // 更重的鼓
-        if (i % 8 === 0)  playDrum('kick',  nextNoteTime, 0.4);
-        if (i % 8 === 2)  playDrum('hihat', nextNoteTime, 0.15);
-        if (i % 8 === 4)  playDrum('kick',  nextNoteTime, 0.35);
-        if (i % 8 === 4)  playDrum('snare', nextNoteTime, 0.3);
-        if (i % 8 === 6)  playDrum('hihat', nextNoteTime, 0.15);
-        if (i % 4 === 3)  playDrum('hihat', nextNoteTime, 0.1);
+        playNote(ROOM_LEAD[i], nextNoteTime, dur, 'square',   0.16);
+        playNote(ROOM_ARP[i],  nextNoteTime, dur * 0.6, 'triangle', 0.10);
+        // 輕快鼓組
+        if (i % 8 === 0)  playDrum('kick',  nextNoteTime, 0.35);
+        if (i % 8 === 2)  playDrum('hihat', nextNoteTime, 0.18);
+        if (i % 8 === 4)  playDrum('snare', nextNoteTime, 0.28);
+        if (i % 8 === 6)  playDrum('hihat', nextNoteTime, 0.18);
+        if (i % 4 === 1)  playDrum('hihat', nextNoteTime, 0.10);
+        if (i % 4 === 3)  playDrum('hihat', nextNoteTime, 0.10);
       }
 
       nextNoteTime += beat;
