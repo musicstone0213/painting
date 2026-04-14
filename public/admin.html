@@ -55,6 +55,34 @@
 
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     @media(max-width:600px){.grid2{grid-template-columns:1fr;}}
+
+    /* 管理功能 */
+    .create-room-box{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
+    .admin-input{
+      background:#0d0d1a;border:1px solid rgba(255,221,61,.3);color:#fff;
+      padding:8px 10px;font-size:11px;font-family:'Noto Sans TC',sans-serif;outline:none;
+      flex:1;min-width:140px;
+    }
+    .admin-select{
+      background:#0d0d1a;border:1px solid rgba(255,221,61,.3);color:#fff;
+      padding:8px 10px;font-size:11px;font-family:'Noto Sans TC',sans-serif;outline:none;cursor:pointer;
+    }
+    .action-btn{
+      font-family:'Press Start 2P',monospace;font-size:7px;
+      border:none;padding:8px 12px;cursor:pointer;white-space:nowrap;
+      transition:opacity .15s;
+    }
+    .action-btn:hover{opacity:.8;}
+    .action-btn.green{background:rgba(76,255,145,.15);color:#4cff91;border:1px solid rgba(76,255,145,.3);}
+    .action-btn.yellow{background:rgba(255,221,61,.15);color:var(--yellow);border:1px solid rgba(255,221,61,.3);}
+    .action-btn.red{background:rgba(255,100,100,.15);color:#FF6B6B;border:1px solid rgba(255,100,100,.3);}
+    .action-btn.orange{background:rgba(255,140,0,.15);color:#FF8C00;border:1px solid rgba(255,140,0,.3);}
+    .rename-input{
+      background:#0d0d1a;border:1px solid rgba(255,221,61,.3);color:#fff;
+      padding:4px 8px;font-size:10px;font-family:'Noto Sans TC',sans-serif;outline:none;width:140px;
+    }
+    .op-cell{display:flex;gap:4px;flex-wrap:wrap;}
+    .perm-badge{font-size:6px;color:#555;font-family:'Press Start 2P',monospace;}
   </style>
 </head>
 <body>
@@ -127,10 +155,24 @@
         <th>排隊</th>
         <th>狀態</th>
         <th>在線用戶</th>
+        <th>操作</th>
       </tr>
     </thead>
     <tbody id="roomTableBody"></tbody>
   </table>
+
+  <!-- 新增房間 -->
+  <div class="section-title" style="margin-top:24px;">➕ 新增房間</div>
+  <div class="create-room-box">
+    <input type="text" id="newRoomName" placeholder="房間名稱" class="admin-input" maxlength="20"/>
+    <select id="newRoomPublic" class="admin-select">
+      <option value="1">公開</option>
+      <option value="0">私人</option>
+    </select>
+    <input type="number" id="newRoomMax" placeholder="人數上限" class="admin-input" style="width:100px;" value="30" min="2" max="100"/>
+    <button class="action-btn green" onclick="createRoom()">建立房間</button>
+  </div>
+  <div id="createMsg" style="font-size:8px;margin-top:8px;display:none;"></div>
 </div>
 
 <script>
@@ -205,6 +247,12 @@ function renderStats(data) {
     const userList = r.users.length > 0
       ? r.users.join('、')
       : '<span style="color:#333">無</span>';
+    // 操作按鈕
+    const ops = `<div class="op-cell">
+      <button class="action-btn yellow" onclick="renameRoom('${r.code}','${r.name.replace(/'/g,"\'")}')">✏️ 改名</button>
+      <button class="action-btn orange" onclick="clearRoom('${r.code}')">🗑️ 清畫布</button>
+      ${r.isPermanent ? `<span class="perm-badge">永久房<br/>不可刪</span>` : `<button class="action-btn red" onclick="deleteRoom('${r.code}')">✕ 刪除</button>`}
+    </div>`;
     return `<tr>
       <td><code>${r.code}</code></td>
       <td>${r.name} ${badge}</td>
@@ -212,8 +260,64 @@ function renderStats(data) {
       <td>${r.queued > 0 ? `⏳ ${r.queued}` : '—'}</td>
       <td>${statusBadge}</td>
       <td class="user-list">${userList}</td>
+      <td>${ops}</td>
     </tr>`;
   }).join('');
+}
+
+// ── 房間管理函式 ─────────────────────────────────────
+
+async function adminPost(endpoint, body) {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pwd: password, ...body })
+  });
+  return res.json();
+}
+
+async function renameRoom(code, currentName) {
+  const newName = prompt(`更改房間名稱：`, currentName);
+  if (!newName || !newName.trim()) return;
+  const r = await adminPost('/api/admin/room/rename', { roomCode: code, newName });
+  if (r.success) { showMsg(`✅ 已改名為「${r.name}」`); loadStats(); }
+  else showMsg('❌ ' + r.error, true);
+}
+
+async function deleteRoom(code) {
+  if (!confirm(`確定要刪除房間 ${code} 嗎？房內所有人將被踢出。`)) return;
+  const r = await adminPost('/api/admin/room/delete', { roomCode: code });
+  if (r.success) { showMsg('✅ 房間已刪除'); loadStats(); }
+  else showMsg('❌ ' + r.error, true);
+}
+
+async function clearRoom(code) {
+  if (!confirm(`確定要清空房間 ${code} 的畫布嗎？`)) return;
+  const r = await adminPost('/api/admin/room/clear', { roomCode: code });
+  if (r.success) { showMsg('✅ 畫布已清空'); }
+  else showMsg('❌ ' + r.error, true);
+}
+
+async function createRoom() {
+  const name    = document.getElementById('newRoomName').value.trim();
+  const isPublic= document.getElementById('newRoomPublic').value === '1';
+  const maxUsers= parseInt(document.getElementById('newRoomMax').value) || 30;
+  if (!name) { showMsg('❌ 請輸入房間名稱', true); return; }
+  const r = await adminPost('/api/admin/room/create', { roomName: name, isPublic, maxUsers });
+  if (r.success) {
+    showMsg(`✅ 已建立房間，代碼：${r.roomCode}`);
+    document.getElementById('newRoomName').value = '';
+    loadStats();
+  } else showMsg('❌ ' + r.error, true);
+}
+
+function showMsg(msg, isErr=false) {
+  const el = document.getElementById('createMsg');
+  el.textContent = msg;
+  el.style.color = isErr ? '#FF6B6B' : '#4cff91';
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display='none', 4000);
 }
 
 function renderBarChart(id, data) {

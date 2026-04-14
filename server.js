@@ -117,6 +117,69 @@ app.get('/api/admin/stats', (req, res) => {
   });
 });
 
+// ── 房間管理 API ────────────────────────────────────
+
+// 更改房間名稱
+app.post('/api/admin/room/rename', (req, res) => {
+  const { pwd, roomCode, newName } = req.body;
+  if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ error: '密碼錯誤' });
+  if (!roomCode || !newName || !newName.trim()) return res.status(400).json({ error: '缺少參數' });
+  const room = rooms[roomCode];
+  if (!room) return res.status(404).json({ error: '房間不存在' });
+  room.name = newName.trim();
+  broadcastRoomList();
+  res.json({ success: true, name: room.name });
+});
+
+// 刪除房間（永久房間不可刪）
+app.post('/api/admin/room/delete', (req, res) => {
+  const { pwd, roomCode } = req.body;
+  if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ error: '密碼錯誤' });
+  const room = rooms[roomCode];
+  if (!room) return res.status(404).json({ error: '房間不存在' });
+  if (room.isPermanent) return res.status(400).json({ error: '永久房間不可刪除' });
+  // 踢出所有在線用戶
+  io.to(roomCode).emit('roomDeleted', { message: '房間已被管理員關閉' });
+  delete rooms[roomCode];
+  broadcastRoomList();
+  res.json({ success: true });
+});
+
+// 新增自定義房間
+app.post('/api/admin/room/create', (req, res) => {
+  const { pwd, roomName, isPublic, maxUsers } = req.body;
+  if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ error: '密碼錯誤' });
+  if (!roomName || !roomName.trim()) return res.status(400).json({ error: '請輸入房間名稱' });
+  const code = generateCode();
+  rooms[code] = {
+    code,
+    name:          roomName.trim(),
+    isPublic:      !!isPublic,
+    isPermanent:   false,
+    maxUsers:      maxUsers || MAX_USERS,
+    users:         new Map(),
+    queue:         [],
+    canvasSnapshot: null,
+    clearVotes:    new Set(),
+    createdAt:     new Date(),
+    recentDrawers: new Set(),
+  };
+  broadcastRoomList();
+  res.json({ success: true, roomCode: code });
+});
+
+// 強制清空指定房間畫布
+app.post('/api/admin/room/clear', (req, res) => {
+  const { pwd, roomCode } = req.body;
+  if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ error: '密碼錯誤' });
+  const room = rooms[roomCode];
+  if (!room) return res.status(404).json({ error: '房間不存在' });
+  room.canvasSnapshot = null;
+  redisSet(`canvas:${roomCode}`, '').catch(()=>{});
+  io.to(roomCode).emit('clearCanvas');
+  res.json({ success: true });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 

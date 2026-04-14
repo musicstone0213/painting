@@ -432,6 +432,12 @@ socket.on('placeSticker',({dataURL,x,y,w,h})=>{
   const img=new Image();img.onload=()=>{ctx.drawImage(img,x,y,w,h);offscreenCtx.drawImage(img,x,y,w,h);};img.src=dataURL;
 });
 socket.on('clearCanvas',()=>{ fillWhite(); showNotif('🗑️ 畫布已清除'); });
+socket.on('roomDeleted',()=>{
+  alert('此房間已被管理員關閉');
+  socket.disconnect();
+  sessionStorage.clear();
+  window.location.href='index.html';
+});
 socket.on('userJoined',({nickname:n,roomInfo})=>{onlineCount.textContent=roomInfo.userCount;appendSystemMsg(`🎨 ${n} 加入了`);showNotif(`🎨 ${n} 加入了`);});
 socket.on('userLeft',({nickname:n,roomInfo})=>{onlineCount.textContent=roomInfo.userCount;appendSystemMsg(`👋 ${n} 離開了`);showNotif(`👋 ${n} 離開了`);});
 socket.on('cursorMove',({socketId,x,y,name})=>{
