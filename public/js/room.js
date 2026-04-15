@@ -52,7 +52,8 @@ const fabMain           = document.getElementById('fabMain');
 const fabMenu           = document.getElementById('fabMenu');
 const fabChat           = document.getElementById('fabChat');
 const fabReaction       = document.getElementById('fabReaction');
-const fabUploadImg      = document.getElementById('fabUploadImg');
+const sideUploadBtn     = document.getElementById('sideUploadBtn');
+const sideEraserBtn     = document.getElementById('sideEraserBtn');
 
 // 浮動面板
 const chatPanel         = document.getElementById('chatPanel');
@@ -107,6 +108,17 @@ function applyScale() {
   canvas.style.transform = `scale(${canvasScale})`;
   cursorLayer.style.transform = `scale(${canvasScale})`;
   cursorLayer.style.transformOrigin = '0 0';
+  // 關鍵：用一個佔位 div 撐開 viewport 的可滾動範圍
+  // 讓滾動範圍隨縮放比例同步更新
+  let spacer = document.getElementById('canvasSpacer');
+  if (!spacer) {
+    spacer = document.createElement('div');
+    spacer.id = 'canvasSpacer';
+    spacer.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    viewport.appendChild(spacer);
+  }
+  spacer.style.width  = (CANVAS_W * canvasScale) + 'px';
+  spacer.style.height = (CANVAS_H * canvasScale) + 'px';
 }
 function screenToCanvas(clientX, clientY) {
   return {
@@ -482,7 +494,26 @@ function closeFab(){fabOpen=false;fabMenu.classList.add('hidden');fabMain.textCo
 
 fabChat.addEventListener('click',()=>{SFX.click();togglePanel(chatPanel);closeFab();});
 fabReaction.addEventListener('click',()=>{SFX.click();togglePanel(reactionPanel);closeFab();});
-fabUploadImg.addEventListener('click',()=>{SFX.click();closeFab();openFilePicker();});
+// 橡皮擦獨立按鍵
+if (sideEraserBtn) {
+  sideEraserBtn.addEventListener('click', ()=>{
+    SFX.tick();
+    currentBrush = 'eraser';
+    updateBrushUI('eraser');
+    // 切換繪圖模式
+    if (canvasMode === 'pan') { canvasMode = 'draw'; updateModeUI(); }
+  });
+}
+
+// 工具列插入圖片
+if (sideUploadBtn) {
+  sideUploadBtn.addEventListener('click',()=>{
+    SFX.click();
+    sideToolbar.classList.remove('open');
+    fabTools.classList.remove('hidden');
+    openFilePicker();
+  });
+}
 
 function togglePanel(panel){
   const hidden=panel.classList.contains('hidden');
@@ -500,13 +531,8 @@ colorPicker.addEventListener('input',e=>{
   SFX.tick();
   if(canvasMode==='pan'){canvasMode='draw';updateModeUI();}
 });
-if(colorPickerBtn) {
-  // 初始化預覽色塊
-  if(colorPickerPreview) colorPickerPreview.style.background=currentColor;
-  colorPickerBtn.addEventListener('click',()=>{
-    colorPicker.click(); // 觸發原生調色盤
-  });
-}
+// 初始化預覽色塊（label for 已在 HTML 直接觸發 input，不需要額外 click）
+if(colorPickerPreview) colorPickerPreview.style.background=currentColor;
 swatches.forEach(sw=>{
   sw.addEventListener('click',()=>{
     SFX.tick();
@@ -518,13 +544,24 @@ swatches.forEach(sw=>{
 });
 
 // 畫筆
-sizeBtns.forEach(btn=>{
-  btn.addEventListener('click',()=>{
+// 粗細拉桿
+if (sizeSlider) {
+  sizeSlider.addEventListener('input', () => {
+    currentSize = parseInt(sizeSlider.value);
+    // 更新預覽圓點大小
+    if (sizePreviewDot) {
+      const px = Math.max(4, Math.min(currentSize, 36));
+      sizePreviewDot.style.width  = px + 'px';
+      sizePreviewDot.style.height = px + 'px';
+    }
     SFX.tick();
-    currentSize=parseInt(btn.dataset.size);
-    sizeBtns.forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   });
-});
+  // 初始化預覽
+  if (sizePreviewDot) {
+    sizePreviewDot.style.width  = currentSize + 'px';
+    sizePreviewDot.style.height = currentSize + 'px';
+  }
+}
 brushBtns.forEach(btn=>{
   btn.addEventListener('click',()=>{
     SFX.tick();
@@ -536,6 +573,10 @@ brushBtns.forEach(btn=>{
 });
 function updateBrushUI(brush){
   brushBtns.forEach(b=>b.classList.toggle('active',b.dataset.brush===brush));
+  // 橡皮擦獨立按鍵
+  if (sideEraserBtn) {
+    sideEraserBtn.classList.toggle('active', brush==='eraser');
+  }
   updateModeUI();
 }
 

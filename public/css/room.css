@@ -4,7 +4,29 @@
 html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;background:#fff;touch-action:none;}
 
 /* ══ CANVAS ══ */
-.canvas-viewport{position:fixed;inset:0;overflow:scroll;cursor:crosshair;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
+.canvas-viewport{
+  position:fixed;inset:0;
+  overflow:scroll;
+  cursor:crosshair;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-x pan-y;
+  scrollbar-width:none;        /* Firefox */
+  -ms-overflow-style:none;     /* IE/Edge */
+}
+.canvas-viewport::-webkit-scrollbar{
+  display:none;                /* Chrome/Safari/手機 */
+}
+/* canvas 用 transform scale，spacer 撐開真實捲動範圍 */
+#canvasSpacer{
+  position:absolute;
+  top:0;left:0;
+  pointer-events:none;
+  z-index:-1;
+}
+#mainCanvas{
+  position:absolute;
+  top:0;left:0;
+}
 .canvas-viewport.eraser-mode{cursor:cell;}
 .canvas-viewport.pan-mode{cursor:grab;}
 .canvas-viewport.pan-mode:active{cursor:grabbing;}
@@ -42,15 +64,17 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 /* ══ 左側飛入工具列 ══ */
 .side-toolbar{
   position:fixed;top:0;left:0;bottom:0;width:170px;
-  background:rgba(26,26,46,.97);
-  border-right:2px solid var(--yellow);
+  background:#16213e;
+  border-right:3px solid var(--yellow);
   z-index:60;
   transform:translateX(-100%);
   transition:transform .3s cubic-bezier(.4,0,.2,1);
   display:flex;flex-direction:column;
   padding:12px 12px;gap:10px;
   overflow-y:auto;
+  scrollbar-width:none;
 }
+.side-toolbar::-webkit-scrollbar{display:none;}
 .side-toolbar.open{transform:translateX(0);}
 .side-toolbar-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,221,61,.18);padding-bottom:8px;flex-shrink:0;}
 .side-toolbar-title{font-size:7px;color:rgba(255,221,61,.5);letter-spacing:1px;}
@@ -207,14 +231,84 @@ html,body{height:100%;overflow:hidden;font-family:'Press Start 2P',monospace;bac
 /* 色票 */
 .swatches{
   display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:4px;
+  grid-template-columns:repeat(4,1fr);
+  gap:5px;
   margin-top:4px;
 }
 .swatch{
   width:100%; aspect-ratio:1;
   border:2px solid rgba(255,255,255,.15);
-  cursor:pointer; flex-shrink:0;
+  cursor:pointer;flex-shrink:0;
+  min-height:32px;
   transition:transform .15s,border-color .15s;
 }
-.swatch.active{ border-color:#fff; transform:scale(1.15); }
+.swatch.active{border-color:#fff;transform:scale(1.1);}
+
+/* ── 粗細拉桿 ── */
+.side-slider-wrap{
+  display:flex;align-items:center;gap:6px;
+}
+.slider-dot{
+  background:var(--yellow);border-radius:50%;flex-shrink:0;
+}
+.slider-dot.sm{width:5px;height:5px;}
+.slider-dot.lg{width:13px;height:13px;}
+.size-slider{
+  flex:1;
+  -webkit-appearance:none;appearance:none;
+  height:4px;
+  background:rgba(255,221,61,.25);
+  outline:none;border-radius:2px;cursor:pointer;
+}
+.size-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:20px;height:20px;
+  background:var(--yellow);
+  border-radius:50%;
+  cursor:pointer;
+  border:3px solid var(--navy2);
+  box-shadow:0 0 0 1px rgba(255,221,61,.4);
+}
+.size-slider::-moz-range-thumb{
+  width:20px;height:20px;
+  background:var(--yellow);
+  border-radius:50%;
+  cursor:pointer;
+  border:3px solid var(--navy2);
+}
+.size-preview-wrap{
+  display:flex;align-items:center;justify-content:center;
+  height:28px;margin-top:2px;
+}
+.size-preview-dot{
+  background:rgba(255,255,255,.6);
+  border-radius:50%;
+  width:4px;height:4px;
+  transition:width .1s,height .1s;
+}
+
+/* ── 插入圖片按鈕（工具列底部） ── */
+.side-upload-btn{
+  background:rgba(78,205,196,.12);
+  border:2px solid rgba(78,205,196,.5);
+  color:#7eeee6;
+  font-family:'Press Start 2P',monospace;
+  font-size:8px;
+  padding:12px 10px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:auto;
+  transition:all .15s;
+  width:100%;
+  flex-shrink:0;
+}
+.side-upload-btn:hover{background:rgba(78,205,196,.25);color:#fff;}
+.side-upload-btn .u-icon{font-size:20px;}
+
+/* ── 工具列分隔線 ── */
+.side-divider{
+  height:1px;
+  background:rgba(255,221,61,.2);
+  flex-shrink:0;
+  margin:0 -12px;
+}

@@ -58,14 +58,14 @@
     </div>
     <div class="side-section">
       <div class="side-label">COLOR</div>
-      <!-- 調色盤：點擊按鈕觸發 hidden input -->
+      <!-- 調色盤：label 包住 input，手機直接點也能開啟 -->
       <div class="color-picker-wrap">
-        <input type="color" id="colorPicker" class="color-picker-hidden" value="#1A1A2E"/>
-        <button class="color-picker-btn" id="colorPickerBtn">
+        <label class="color-picker-btn" id="colorPickerBtn" for="colorPicker">
           <span class="cpb-preview" id="colorPickerPreview"></span>
           <span class="cpb-label">🎨 自訂顏色</span>
           <span class="cpb-arrow">▶</span>
-        </button>
+        </label>
+        <input type="color" id="colorPicker" class="color-picker-hidden" value="#1A1A2E"/>
       </div>
       <div class="swatches">
         <button class="swatch active" style="background-color:#1A1A2E;" data-color="#1A1A2E"></button>
@@ -88,17 +88,26 @@
         <button class="brush-btn"        data-brush="crayon" title="蠟筆">🖍️</button>
         <button class="brush-btn"        data-brush="marker" title="螢光筆">✨</button>
         <button class="brush-btn"        data-brush="mosaic" title="馬賽克">▦</button>
-        <button class="brush-btn"        data-brush="eraser" title="橡皮擦">🧹</button>
       </div>
     </div>
     <div class="side-section">
       <div class="side-label">SIZE</div>
-      <div class="side-size-row">
-        <button class="size-btn active" data-size="4">●</button>
-        <button class="size-btn"        data-size="10">●</button>
-        <button class="size-btn"        data-size="22">●</button>
+      <div class="side-slider-wrap">
+        <div class="slider-dot sm"></div>
+        <input type="range" id="sizeSlider" class="size-slider" min="1" max="40" value="4"/>
+        <div class="slider-dot lg"></div>
+      </div>
+      <div class="size-preview-wrap">
+        <div class="size-preview-dot" id="sizePreviewDot"></div>
       </div>
     </div>
+    <div class="side-divider"></div>
+    <button class="side-eraser-btn" id="sideEraserBtn" data-brush="eraser">
+      <span class="e-icon">🧹</span>橡皮擦
+    </button>
+    <button class="side-upload-btn" id="sideUploadBtn">
+      <span class="u-icon">📎</span>插入圖片
+    </button>
   </div>
 
   <!-- ── 三個底部 FAB ── -->
@@ -113,7 +122,6 @@
     <div class="fab-menu hidden" id="fabMenu">
       <button class="fab-item" id="fabChat"><span class="fab-item-icon">💬</span><span class="fab-item-label">聊天</span></button>
       <button class="fab-item" id="fabReaction"><span class="fab-item-icon">😂</span><span class="fab-item-label">表情</span></button>
-      <button class="fab-item" id="fabUploadImg"><span class="fab-item-icon">📎</span><span class="fab-item-label">插入圖片</span></button>
     </div>
     <button class="fab-main" id="fabMain">☰</button>
   </div>
