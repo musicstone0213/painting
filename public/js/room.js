@@ -104,21 +104,32 @@ let modeHideTimer = null;
 roomCodeDisp.textContent = roomCode;
 
 function applyScale() {
+  // CSS transform scale 縮放 canvas（不影響 layout）
   canvas.style.transformOrigin = '0 0';
   canvas.style.transform = `scale(${canvasScale})`;
   cursorLayer.style.transform = `scale(${canvasScale})`;
   cursorLayer.style.transformOrigin = '0 0';
-  // 關鍵：用一個佔位 div 撐開 viewport 的可滾動範圍
-  // 讓滾動範圍隨縮放比例同步更新
+  reactionLayer.style.transform = `scale(${canvasScale})`;
+  reactionLayer.style.transformOrigin = '0 0';
+  danmakuLayer.style.transform = `scale(${canvasScale})`;
+  danmakuLayer.style.transformOrigin = '0 0';
+
+  // 用 spacer 撐開 viewport 的真實可捲動範圍
   let spacer = document.getElementById('canvasSpacer');
   if (!spacer) {
     spacer = document.createElement('div');
     spacer.id = 'canvasSpacer';
-    spacer.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    spacer.style.cssText = [
+      'position:absolute',
+      'top:0',
+      'left:0',
+      'pointer-events:none',
+      'z-index:0'
+    ].join(';');
     viewport.appendChild(spacer);
   }
-  spacer.style.width  = (CANVAS_W * canvasScale) + 'px';
-  spacer.style.height = (CANVAS_H * canvasScale) + 'px';
+  spacer.style.width  = Math.ceil(CANVAS_W * canvasScale) + 'px';
+  spacer.style.height = Math.ceil(CANVAS_H * canvasScale) + 'px';
 }
 function screenToCanvas(clientX, clientY) {
   return {
